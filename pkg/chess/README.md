@@ -1,10 +1,10 @@
 ## Chess
 
-Chess implements all logic related to game rules. It use as default the
-pkg.Board but it could receive anotherone if it follows Board interface.
+Chess implements all logic related to game rules. It uses as default the pkg.Board but it could 
+receive another one if it follows the Board interface.
 
-Chess mission is wrap all chess logic but also be the most generic as possible.
-This could be usefull if you want to implement a chess variant, like 960Chess.
+Chess's mission is to wrap all chess logic but also be as generic as possible. This could be useful
+if you want to implement a chess variant, like 960Chess.
 
 Chess exports the following functions:
 
@@ -21,7 +21,7 @@ func (c *Chess) UnmakeMove() error
 is stalemate, it will return an empty slice and no error. If position is checkmate,
 it will return a nil slice and no error.
 
-`MakeMove` checks if move passed by parameter is legal and if it is makes it.
+`MakeMove` checks if move passed by parameter is legal and if it is, makes it.
 
 `Unmakemove` unmakes the last move.
 
@@ -35,7 +35,7 @@ as parameter. If you don't use any, Chess board will be created in initial posit
 
 Those are the posssible options:
 
-`WithBoard` receives a Board and put it in Chess. If you want to use this, it 
+`WithBoard` receives a Board and puts it in Chess. If you want to use this, it 
 should be the first option.
 
 `WithFEN` receives a string and calls Board.LoadPosition. 
