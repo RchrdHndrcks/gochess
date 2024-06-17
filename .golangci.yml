@@ -1,0 +1,33 @@
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  lll:
+    line-length: 100
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  revive:
+    ignore-generated-header: true
+    severity: warning
+    rules:
+      - name: indent-error-flow
+      - name: error-naming
+      - name: var-declaration
+      - name: unused-parameter
+
+linters:
+  enable:
+    - govet
+    - revive
+    - staticcheck
+    - errcheck
+    - goconst
+    - gocyclo
+    - goimports
+    - ineffassign
+    - unparam
+    - unused
+
+run:
+  tests: true
+  timeout: 5m
