@@ -1,45 +1,41 @@
 ## GOCHESS
 
-Gochess implements all logic related to a Chess game. With this library you would be able
-to have a Chess game or create a variant of it!
+Gochess implements all the logic related to a Chess game. With this library, you will be able to 
+play a Chess game or create a variant of it!
 
 ### Implementation
 
-This library tries to separate the logic related to a Chess Board of the game.
-Board has all logic related to pieces movements while Chess wraps logic related to chess rules
-like which color must play in each turn, if castle is available or which square is available
-to an in passant capture.
+This library separates the logic related to the Chess board from the game logic. The Board struct 
+handles all logic related to piece movements, while the Chess struct wraps the logic related to 
+chess rules, such as determining which color must play each turn, checking castling availability, 
+and identifying squares available for en passant capture.
 
 ### Pieces
 
-Pieces are implemented with bit logic.
-These were created following the next table:
+Pieces are implemented using bitwise logic. They are represented following this table:
 
 ```
-    Empty:  00000
+	Empty:  00000
 	Pawn:   00001
 	Knight: 00010
 	Bishop: 00011
 	Rook:   00100
 	Queen:  00101
 	King:   00110
-
-    White:  01000
-    Black:  10000
+ 
+	White:  01000
+	Black:  10000
 ```
 
-With this implementation you can easily create a colored piece only making an OR operation,
-e.g.: White | Pawn -> `01001`
+With this implementation, you can easily create a colored piece using a bitwise OR operation, e.g., White | Pawn -> 01001.
 
-And with only five bits you can implement all Chess pieces, so, `int8` type is a really powerful
-gun!
+Using only five bits, you can represent all Chess pieces, making the int8 type a powerful tool for this purpose.
 
-This kind of implementation was inspired by 
-[Sebastian Lague](https://youtu.be/U4ogK0MIzqk?si=YFuh4EK5j4v6dZy5) who made the same in C#.
+This implementation was inspired by Sebastian Lague, who did something similar in C#.
 
 ### Board
 
-Board exports the following functions:
+The `Board` exports the following functions:
 
 ``` go
 LoadPosition(string) error
@@ -49,19 +45,18 @@ MakeMove(string) error
 Width() int
 ```
 
-`LoadPosition` load the pieces into the board. This board was created to be used in Chess package, 
-so this function expects a FEN as parameter. It returns an error if FEN is not valid.
+`LoadPosition`: Loads the pieces onto the board using a FEN string as a parameter. It returns an error 
+if the FEN string is invalid.
 
-`Square` returns a piece of the square passed as coordinate. It returns an error if the coordinate
-is out of bounds.
+`Square`: Returns the piece at the given coordinate. It returns an error if the coordinate is out of 
+bounds.
 
-`AvailableMoves` returns all possible moves in UCI format. This function does not check if a move
-is legal or not. This functionality is provided by Chess.
+`AvailableMoves`: Returns all possible moves in UCI format. This function does not check if a move is 
+legal; that functionality is provided by the Chess struct.
 
-`MakeMove` makes the movements passed as UCI format. It can determinate if the move was a capture,
-a castle or a promotion and it acts in consecuence. If the movement is not valid, it returns
-an error.
+`MakeMove`: Executes a move in UCI format. It can determine if the move was a capture, castling, or 
+promotion and acts accordingly. If the move is invalid, it returns an error.
 
-`Width` returns the square count of a board side (8). This is only implemented to follow Chess
-board interface (see more in Chess package).
+`Width`: Returns the number of squares on one side of the board (8). This is implemented to follow the
+Chess board interface (see more in the Chess package).
 
