@@ -291,6 +291,57 @@ func TestMakeMove(t *testing.T) {
 	}
 }
 
+func TestIsCheck(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    []chess.Option
+		isCheck bool
+		errMsg  string
+	}{
+		{
+			name:    "Default",
+			opts:    []chess.Option{},
+			isCheck: false,
+		},
+		{
+			name:    "Custom FEN - king is in check",
+			opts:    []chess.Option{chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1")},
+			isCheck: true,
+		},
+		{
+			name:    "Custom FEN - king is not in check",
+			opts:    []chess.Option{chess.WithFEN("k7/8/8/8/8/8/8/3K4 w - - 0 1")},
+			isCheck: false,
+		},
+		{
+			name:    "Custom FEN - king is not in the board",
+			opts:    []chess.Option{chess.WithFEN("8/8/8/8/8/8/3q4/8 w - - 0 1")},
+			isCheck: false,
+			errMsg:  "failed to get king position: king not found",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Arrange
+			c, errOpts := chess.NewChess(test.opts...)
+			require.Nil(t, errOpts)
+
+			// Act
+			isCheck, err := c.IsCheck()
+
+			// Assert
+			assert.Equal(t, test.isCheck, isCheck)
+			if test.errMsg != "" {
+				require.NotNil(t, err)
+				assert.Equal(t, test.errMsg, err.Error())
+				return
+			}
+			assert.Nil(t, err)
+		})
+	}
+}
+
 func TestMakeMove_ScholarMate(t *testing.T) {
 	// Arrange
 	c, err := chess.NewChess()

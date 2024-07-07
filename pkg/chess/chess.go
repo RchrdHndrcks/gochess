@@ -13,10 +13,16 @@ import (
 type (
 	// Board represents a chess board.
 	Board interface {
+		// LoadPosition loads a position into the board from a string.
 		LoadPosition(string) error
+		// Square returns the piece in a square.
 		Square(c pkg.Coordinate) (int8, error)
+		// AvailableMoves returns all the available moves for the current turn, without checking
+		// if they are legal.
 		AvailableMoves(turn int8, inPassantSquare, castlePossibilities string) ([]string, error)
+		// MakeMove makes a move without checking if it is legal.
 		MakeMove(string) error
+		// Width returns the width of the board.
 		Width() int
 	}
 
@@ -293,6 +299,15 @@ func (c *Chess) unmakeMove() error {
 
 	c.toggleColor()
 	return nil
+}
+
+// IsCheck returns if the current turn is in check.
+func (c *Chess) IsCheck() (bool, error) {
+	if c.board == nil || reflect.ValueOf(c.board).IsNil() {
+		return false, fmt.Errorf("board cannot be nil")
+	}
+
+	return c.isCheck()
 }
 
 func (c *Chess) setProperties(FEN string) error {
