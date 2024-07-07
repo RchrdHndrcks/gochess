@@ -7,5 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2024-07-07
+
 ### Added
+
 - [#3](https://github.com/RchrdHndrcks/gochess/pull/3) Add IsCheck function to Board.
