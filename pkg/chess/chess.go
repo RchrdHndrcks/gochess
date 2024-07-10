@@ -310,6 +310,26 @@ func (c *Chess) IsCheck() (bool, error) {
 	return c.isCheck()
 }
 
+// Square returns the piece in a square.
+// The square is represented by an algebraic notation.
+func (c Chess) Square(square string) (string, error) {
+	if c.board == nil || reflect.ValueOf(c.board).IsNil() {
+		return "", fmt.Errorf("board cannot be nil")
+	}
+
+	coor, err := pkg.AlgebraicToCoordinate(square)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert algebraic notation to coordinate: %w", err)
+	}
+
+	p, err := c.board.Square(coor)
+	if err != nil {
+		return "", fmt.Errorf("failed to get square: %w", err)
+	}
+
+	return pkg.PieceNames[p], nil
+}
+
 func (c *Chess) setProperties(FEN string) error {
 	props := strings.Split(FEN, " ")
 	if len(props) != 6 {
