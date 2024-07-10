@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- [#5](https://github.com/RchrdHndrcks/gochess/pull/5) Add Square function to Chess.
+
 ## [1.0.1] - 2024-07-07
 
 ### Added

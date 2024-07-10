@@ -342,6 +342,62 @@ func TestIsCheck(t *testing.T) {
 	}
 }
 
+func TestSquare(t *testing.T) {
+	tests := []struct {
+		name   string
+		opts   []chess.Option
+		square string
+		piece  string
+		errMsg string
+	}{
+		{
+			name:   "Default",
+			opts:   []chess.Option{},
+			square: "e2",
+			piece:  "P",
+		},
+		{
+			name:   "Custom FEN",
+			opts:   []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
+			square: "d3",
+			piece:  "P",
+		},
+		{
+			name:   "Custom FEN - empty square",
+			opts:   []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
+			square: "a1",
+			piece:  "",
+		},
+		{
+			name:   "Custom FEN - invalid square",
+			opts:   []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
+			square: "a9",
+			errMsg: "failed to convert algebraic notation to coordinate: coordinate out of bounds",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Arrange
+			c, errOpts := chess.NewChess(test.opts...)
+			require.Nil(t, errOpts)
+
+			// Act
+			piece, err := c.Square(test.square)
+
+			// Assert
+			if test.errMsg != "" {
+				require.NotNil(t, err)
+				assert.Equal(t, test.errMsg, err.Error())
+				return
+			}
+
+			require.Nil(t, err)
+			assert.Equal(t, test.piece, piece)
+		})
+	}
+}
+
 func TestMakeMove_ScholarMate(t *testing.T) {
 	// Arrange
 	c, err := chess.NewChess()
