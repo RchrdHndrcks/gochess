@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Added
+
+- [#8](https://github.com/RchrdHndrcks/gochess/pull/8) Add go.yml file for Github PRs.
+
 ## Changed
 
 - [#7](https://github.com/RchrdHndrcks/gochess/pull/7) Fix castling calculation.
