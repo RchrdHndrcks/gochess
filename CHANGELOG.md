@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Changed
+
+- [#7](https://github.com/RchrdHndrcks/gochess/pull/7) Fix castling calculation.
+
 ## [1.0.2] - 2024-07-10
 
 ### Added

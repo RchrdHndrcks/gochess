@@ -354,9 +354,11 @@ func (b board) kingCastleMoves(origin Coordinate, castlePossibilities string) []
 		return nil
 	}
 
+	kingColor := p & (White | Black)
+
 	castleDirections := map[string]int{
 		"k": 1, "K": 1,
-		"q": 1, "Q": -1,
+		"q": -1, "Q": -1,
 	}
 
 	moves := []string{}
@@ -365,7 +367,7 @@ func (b board) kingCastleMoves(origin Coordinate, castlePossibilities string) []
 			continue
 		}
 
-		if Pieces[castle]&p == Empty {
+		if Pieces[castle]&kingColor == Empty {
 			continue
 		}
 
