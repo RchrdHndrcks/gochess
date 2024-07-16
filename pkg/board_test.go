@@ -193,6 +193,45 @@ func TestAvailableMoves(t *testing.T) {
 			inPassantSquare: "d6",
 			availableMoves:  []string{"e5d6", "e5e6"},
 		},
+		{
+			name:           "Pawn - promotion 1",
+			turn:           pkg.White,
+			FEN:            "8/3P4/8/8/8/8/8/8 w - - 0 1",
+			availableMoves: []string{"d7d8q", "d7d8r", "d7d8b", "d7d8n"},
+		},
+		{
+			name: "Pawn - promotion 2",
+			turn: pkg.White,
+			FEN:  "2r5/3P4/8/8/8/8/8/8 w - - 0 1",
+			availableMoves: []string{"d7d8q", "d7d8r", "d7d8b", "d7d8n", "d7c8q", "d7c8r",
+				"d7c8b", "d7c8n"},
+		},
+		{
+			name: "Pawn - promotion 3",
+			turn: pkg.White,
+			FEN:  "2rbr3/3P4/8/8/8/8/8/8 w - - 0 1",
+			availableMoves: []string{"d7c8q", "d7c8r", "d7c8b", "d7c8n", "d7e8q", "d7e8r",
+				"d7e8b", "d7e8n"},
+		},
+		{
+			name:           "Pawn - promotion 4",
+			turn:           pkg.Black,
+			FEN:            "8/8/8/8/8/8/p7/8 b - - 0 1",
+			availableMoves: []string{"a2a1q", "a2a1r", "a2a1b", "a2a1n"},
+		},
+		{
+			name: "Pawn - promotion 5",
+			turn: pkg.Black,
+			FEN:  "8/8/8/8/8/8/p7/1R6 b - - 0 1",
+			availableMoves: []string{"a2a1q", "a2a1r", "a2a1b", "a2a1n", "a2b1q", "a2b1r",
+				"a2b1b", "a2b1n"},
+		},
+		{
+			name:           "Pawn - promotion 6",
+			turn:           pkg.Black,
+			FEN:            "8/8/8/8/8/8/p7/RR6 b - - 0 1",
+			availableMoves: []string{"a2b1q", "a2b1r", "a2b1b", "a2b1n"},
+		},
 	}
 
 	for _, tt := range tests {
