@@ -183,11 +183,12 @@ func (b *board) movesForPiece(origin Coordinate, inPassantSquare string, castleP
 
 	switch p &^ (White | Black) {
 	case Pawn:
-		return append(
-			append(b.pawnMoves(origin),
-				b.pawnCaptureMoves(origin, inPassantSquare)...),
-			b.pawnCoronationMoves(origin)...,
-		)
+		coronationMoves := b.pawnCoronationMoves(origin)
+		if len(coronationMoves) > 0 {
+			return coronationMoves
+		}
+
+		return append(b.pawnMoves(origin), b.pawnCaptureMoves(origin, inPassantSquare)...)
 	case Rook:
 		return b.rookMoves(origin)
 	case Queen:
@@ -248,6 +249,8 @@ func (b board) pawnMoves(origin Coordinate) []string {
 }
 
 // pawnCaptureMoves returns valid pawn capture moves.
+// It doesn't check if the move is a coronation move, so pawnCoronationMoves
+// should be called first.
 func (b board) pawnCaptureMoves(origin Coordinate, inPassantSquare string) []string {
 	p, _ := b.Square(origin) // nolint:errcheck
 	pColor := p & (White | Black)
@@ -288,6 +291,9 @@ func (b board) pawnCaptureMoves(origin Coordinate, inPassantSquare string) []str
 }
 
 // pawnCoronationMoves returns valid pawn coronation moves.
+// It also call the pawnCaptureMoves function to check if there is a capture move.
+// If any move is returned there is not necessary to check pawnCaptureMoves.
+// It also handle normal pawn moves.
 func (b board) pawnCoronationMoves(origin Coordinate) []string {
 	p, _ := b.Square(origin) // nolint:errcheck
 	dir := -1
@@ -300,21 +306,36 @@ func (b board) pawnCoronationMoves(origin Coordinate) []string {
 		return nil
 	}
 
+	possibleCoor := []Coordinate{}
 	s, err := b.Square(ts)
 	if err != nil {
 		return nil
 	}
 
-	if s != Empty {
-		return nil
+	if s == Empty {
+		possibleCoor = append(possibleCoor, ts)
+	}
 
+	// pawnCaptureMoves doesn't check if the move is a coronation move,
+	// so we take possible captures at this point and convert them to
+	// coronation moves.
+	// TODO: Design a better way to handle this.
+	captureMoves := b.pawnCaptureMoves(origin, "")
+	for _, move := range captureMoves {
+		tCor, err := AlgebraicToCoordinate(move[2:4])
+		if err != nil {
+			continue
+		}
+
+		possibleCoor = append(possibleCoor, tCor)
 	}
 
 	moves := []string{}
-	for _, p := range []int8{Queen, Rook, Bishop, Knight} {
-		piece := Black | p
-		move := UCI(origin, ts) + string(PieceNames[piece])
-		moves = append(moves, move)
+	for _, t := range possibleCoor {
+		for _, p := range []int8{Black | Queen, Black | Rook, Black | Bishop, Black | Knight} {
+			move := UCI(origin, t) + PieceNames[p]
+			moves = append(moves, move)
+		}
 	}
 
 	return moves
