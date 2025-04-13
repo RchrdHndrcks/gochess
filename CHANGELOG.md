@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- [#13](https://github.com/RchrdHndrcks/gochess/pull/13) Add MIT license.
+
 ## [1.0.4] - 2024-07-15
 
 ## Fixed
