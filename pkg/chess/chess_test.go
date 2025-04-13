@@ -8,447 +8,544 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestChess has a test table where each test case is a sub-test.
 func TestChess(t *testing.T) {
-	tests := []struct {
-		name   string
-		opts   []chess.Option
-		FEN    string
-		errMsg string
-	}{
-		{
-			name: "Default",
-			opts: []chess.Option{},
-			FEN:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-		},
-		{
-			name: "Custom FEN",
-			opts: []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
-			FEN:  "8/8/8/k7/8/K2P4/8/8 w - - 0 1",
-		},
-		{
-			name:   "Invalid FEN",
-			opts:   []chess.Option{chess.WithFEN("invalid")},
-			errMsg: "failed to apply option: failed to load FEN: invalid FEN: invalid",
-		},
-		{
-			name: "Invalid FEN - row too short",
-			opts: []chess.Option{chess.WithFEN("8/8/8/8/1P5/8/8 w - - 0 1")},
-			errMsg: "failed to apply option: failed to load FEN: invalid FEN: " +
-				"8/8/8/8/1P5/8/8 w - - 0 1",
-		},
-		{
-			name:   "Invalid FEN - invalid number of properties",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8")},
-			errMsg: "failed to apply option: failed to load FEN: invalid FEN: 8/8/8/8/8/8/8/8",
-		},
-		{
-			name:   "Invalid FEN - invalid number of properties",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 w")},
-			errMsg: "failed to apply option: failed to load FEN: invalid FEN: 8/8/8/8/8/8/8/8 w",
-		},
-		{
-			name:   "Invalid FEN - invalid color",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 x KQkq - 0 1")},
-			errMsg: "failed to apply option: failed to set properties: invalid FEN color: x",
-		},
-		{
-			name: "Invalid FEN - invalid castling",
-			opts: []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 w KGkq - 0 1")},
-			errMsg: "failed to apply option: failed to set properties: invalid FEN castles:" +
-				" invalid castle: KGkq",
-		},
-		{
-			name: "Invalid FEN - invalid in passant square - invalid len of square",
-			opts: []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 w KQkq ab3 0 1")},
-			errMsg: "failed to apply option: failed to set properties: invalid FEN in passant " +
-				"square: invalid in passant square: ab3",
-		},
-		{
-			name: "Invalid FEN - invalid in passant square - invalid square column",
-			opts: []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 w KQkq j2 0 1")},
-			errMsg: "failed to apply option: failed to set properties: invalid FEN in passant " +
-				"square: invalid in passant square: j2",
-		},
-		{
-			name: "Invalid FEN - invalid in passant square - invalid square row",
-			opts: []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 w KQkq a9 0 1")},
-			errMsg: "failed to apply option: failed to set properties: invalid FEN in passant " +
-				"square: invalid in passant square: a9",
-		},
-		{
-			name:   "Invalid FEN - invalid half moves count - not a number",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 w KQkq - a 1")},
-			errMsg: "failed to apply option: failed to set properties: invalid FEN half moves: a",
-		},
-		{
-			name:   "Invalid FEN - invalid moves count - not a number",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/8/8/8/8/8 w KQkq - 0 a")},
-			errMsg: "failed to apply option: failed to set properties: invalid FEN moves count: a",
-		},
-	}
+	t.Run("Default", func(t *testing.T) {
+		c, err := chess.New()
+		require.NotNil(t, c)
+		require.Nil(t, err)
+		assert.Equal(t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", c.FEN())
+	})
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c, err := chess.NewChess(test.opts...)
-			if test.errMsg != "" {
-				require.NotNil(t, err)
-				assert.Equal(t, test.errMsg, err.Error())
-				return
-			}
+	t.Run("Custom FEN", func(t *testing.T) {
+		c, err := chess.New(chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1"))
+		require.NotNil(t, c)
+		require.Nil(t, err)
+		assert.Equal(t, "8/8/8/k7/8/K2P4/8/8 w - - 0 1", c.FEN())
+	})
 
-			require.NotNil(t, c)
-			require.Nil(t, err)
-			assert.Equal(t, test.FEN, c.FEN())
-		})
-	}
+	t.Run("Invalid FEN", func(t *testing.T) {
+		_, err := chess.New(chess.WithFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQ1BNR w KQkq - 0 1"))
+		require.Error(t, err)
+	})
 }
 
-func TestAvailableLegalMoves(t *testing.T) {
-	tests := []struct {
-		name   string
-		opts   []chess.Option
-		moves  []string
-		errMsg string
-	}{
-		{
-			name: "Default",
-			opts: []chess.Option{},
-			moves: []string{
-				"a2a3", "a2a4", "b2b3", "b2b4", "c2c3", "c2c4", "d2d3", "d2d4",
-				"e2e3", "e2e4", "f2f3", "f2f4", "g2g3", "g2g4", "h2h3", "h2h4",
-				"b1a3", "b1c3", "g1f3", "g1h3",
-			},
-		},
-		{
-			name:  "Custom FEN 1",
-			opts:  []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
-			moves: []string{"a3b3", "a3b2", "a3a2", "d3d4"},
-		},
-		{
-			name:  "Custom FEN 2",
-			opts:  []chess.Option{chess.WithFEN("8/8/8/8/8/4k3/7r/5K2 w - - 0 1")},
-			moves: []string{"f1e1", "f1g1"},
-		},
-		{
-			name: "Custom FEN - black queenside castle",
-			opts: []chess.Option{chess.WithFEN("r3k3/p7/8/8/8/8/8/7K b q - 0 1")},
-			moves: []string{"a7a6", "a7a5", "a8b8", "a8c8", "a8d8", "e8d8", "e8f8",
-				"e8d7", "e8e7", "e8f7", "e8c8"},
-		},
-		{
-			name: "Custom FEN - black kingside castle",
-			opts: []chess.Option{chess.WithFEN("4k2r/7p/8/8/8/8/8/7K b k - 0 1")},
-			moves: []string{"e8d8", "e8f8", "e8d7", "e8e7", "e8f7", "e8g8", "h8f8",
-				"h8g8", "h7h6", "h7h5"},
-		},
-		{
-			name: "Custom FEN - black both sides castle",
-			opts: []chess.Option{chess.WithFEN("r3k2r/p6p/8/8/8/8/8/7K b kq - 0 1")},
-			moves: []string{"e8d8", "e8f8", "e8d7", "e8e7", "e8f7", "e8g8", "e8c8",
-				"h8f8", "h8g8", "h7h6", "h7h5", "a7a6", "a7a5", "a8b8", "a8c8", "a8d8"},
-		},
-		{
-			name: "Custom FEN - white kingside castle",
-			opts: []chess.Option{chess.WithFEN("7k/8/8/8/8/8/7P/4K2R w K - 0 1")},
-			moves: []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "e1g1", "h1g1",
-				"h1f1", "h2h3", "h2h4"},
-		},
-		{
-			name: "Custom FEN - white queenside castle",
-			opts: []chess.Option{chess.WithFEN("7k/8/8/8/8/8/P7/R3K3 w Q - 0 1")},
-			moves: []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "e1c1", "a1b1",
-				"a1c1", "a1d1", "a2a3", "a2a4"},
-		},
-		{
-			name: "Custom FEN - white both sides castle",
-			opts: []chess.Option{chess.WithFEN("7k/8/8/8/8/8/P6P/R3K2R w KQ - 0 1")},
-			moves: []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "e1c1", "e1g1",
-				"a1b1", "a1c1", "a1d1", "a2a3", "a2a4", "h1g1", "h1f1", "h2h3", "h2h4"},
-		},
-		{
-			name: "Custom FEN - white has not castling rights but black has",
-			opts: []chess.Option{chess.WithFEN("7k/8/8/8/8/8/P7/R3K3 w kq - 0 1")},
-			moves: []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "a1b1",
-				"a1c1", "a1d1", "a2a3", "a2a4"},
-		},
-		{
-			name: "Custom FEN - black has not castling rights but white has",
-			opts: []chess.Option{chess.WithFEN("r3k2r/p6p/8/8/8/8/8/7K b KQ - 0 1")},
-			moves: []string{"e8d8", "e8f8", "e8d7", "e8e7", "e8f7", "h8f8", "h8g8",
-				"h7h6", "h7h5", "a7a6", "a7a5", "a8b8", "a8c8", "a8d8"},
-		},
-		{
-			name: "Custom FEN - castle way blocked",
-			opts: []chess.Option{chess.WithFEN("k7/8/8/8/8/3b4/8/4K2R w K - 0 1")},
-			moves: []string{"h1g1", "h1f1", "h1h2", "h1h3", "h1h4", "h1h5", "h1h6",
-				"h1h7", "h1h8", "e1d1", "e1d2", "e1f2"},
-		},
-		{
-			name: "Custom FEN - rook under attack in castle",
-			opts: []chess.Option{chess.WithFEN("k7/8/8/8/8/7r/8/4K2R w K - 0 1")},
-			moves: []string{"h1g1", "h1f1", "h1h2", "h1h3", "e1d1", "e1d2", "e1e2",
-				"e1f2", "e1f1", "e1g1"},
-		},
-		{
-			name: "Custom FEN - castle is not possible",
-			opts: []chess.Option{chess.WithFEN("k7/8/8/8/7r/8/8/4K2R w - - 0 1")},
-			moves: []string{"h1g1", "h1f1", "h1h2", "h1h3", "h1h4", "e1d1", "e1d2",
-				"e1e2", "e1f2", "e1f1"},
-		},
-		{
-			name:  "Custom FEN - king is in check",
-			opts:  []chess.Option{chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1")},
-			moves: []string{"d1d2"},
-		},
-		{
-			name:  "Custom FEN - king is in checkmate",
-			opts:  []chess.Option{chess.WithFEN("k7/8/8/8/8/8/3qr3/3K4 w - - 0 1")},
-			moves: nil,
-		},
-		{
-			name:  "Custom FEN - king is in stalemate",
-			opts:  []chess.Option{chess.WithFEN("k7/8/8/8/8/8/2q5/K7 w - - 0 1")},
-			moves: []string{},
-		},
-	}
+func TestAvailableMoves(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New()
+		require.Nil(t, errOpts)
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// Arrange
-			c, errOpts := chess.NewChess(test.opts...)
-			require.Nil(t, errOpts)
+		// Act
+		moves := c.AvailableMoves()
 
-			// Act
-			moves, err := c.AvailableLegalMoves()
+		// Assert
+		expectedMoves := []string{
+			"a2a3", "a2a4", "b2b3", "b2b4", "c2c3", "c2c4", "d2d3", "d2d4",
+			"e2e3", "e2e4", "f2f3", "f2f4", "g2g3", "g2g4", "h2h3", "h2h4",
+			"b1a3", "b1c3", "g1f3", "g1h3",
+		}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
 
-			// Assert
-			if test.errMsg == "" {
-				require.Nil(t, err)
-				assert.ElementsMatch(t, test.moves, moves)
-				return
-			}
+	t.Run("Custom FEN 1", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1"))
+		require.Nil(t, errOpts)
 
-			require.NotNil(t, err)
-			assert.Equal(t, test.errMsg, err.Error())
-		})
-	}
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"a3b3", "a3b2", "a3a2", "d3d4"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Custom FEN 2", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/8/8/4k3/7r/5K2 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"f1e1", "f1g1"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Black Queenside Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("r3k3/p7/8/8/8/8/8/7K b q - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"a7a6", "a7a5", "a8b8", "a8c8", "a8d8", "e8d8", "e8f8",
+			"e8d7", "e8e7", "e8f7", "e8c8"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Black Kingside Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("4k2r/7p/8/8/8/8/8/7K b k - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"e8d8", "e8f8", "e8d7", "e8e7", "e8f7", "e8g8", "h8f8",
+			"h8g8", "h7h6", "h7h5"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Black Both Sides Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("r3k2r/p6p/8/8/8/8/8/7K b kq - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"e8d8", "e8f8", "e8d7", "e8e7", "e8f7", "e8g8", "e8c8",
+			"h8f8", "h8g8", "h7h6", "h7h5", "a7a6", "a7a5", "a8b8", "a8c8", "a8d8"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("White Kingside Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("7k/8/8/8/8/8/7P/4K2R w K - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "e1g1", "h1g1",
+			"h1f1", "h2h3", "h2h4"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("White Queenside Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("7k/8/8/8/8/8/P7/R3K3 w Q - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "e1c1", "a1b1",
+			"a1c1", "a1d1", "a2a3", "a2a4"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("White Both Sides Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("7k/8/8/8/8/8/P6P/R3K2R w KQ - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "e1c1", "e1g1",
+			"a1b1", "a1c1", "a1d1", "a2a3", "a2a4", "h1g1", "h1f1", "h2h3", "h2h4"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("White Has No Castling Rights But Black Has", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("7k/8/8/8/8/8/P7/R3K3 w kq - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"e1d1", "e1d2", "e1e2", "e1f2", "e1f1", "a1b1",
+			"a1c1", "a1d1", "a2a3", "a2a4"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Black Has No Castling Rights But White Has", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("r3k2r/p6p/8/8/8/8/8/7K b KQ - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"e8d8", "e8f8", "e8d7", "e8e7", "e8f7", "h8f8", "h8g8",
+			"h7h6", "h7h5", "a7a6", "a7a5", "a8b8", "a8c8", "a8d8"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Castle Way Blocked", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/3b4/8/4K2R w K - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"h1g1", "h1f1", "h1h2", "h1h3", "h1h4", "h1h5", "h1h6",
+			"h1h7", "h1h8", "e1d1", "e1d2", "e1f2"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Rook Under Attack In Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/7r/8/4K2R w K - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"h1g1", "h1f1", "h1h2", "h1h3", "e1d1", "e1d2", "e1e2",
+			"e1f2", "e1f1", "e1g1"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Castle Is Not Possible", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/7r/8/8/4K2R w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"h1g1", "h1f1", "h1h2", "h1h3", "h1h4", "e1d1", "e1d2",
+			"e1e2", "e1f2", "e1f1"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("King Is In Check", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"d1d2"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("King Is In Checkmate", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/3qr3/3K4 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		assert.Nil(t, moves)
+	})
+
+	t.Run("King Is In Stalemate", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/2q5/K7 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
+	t.Run("Pawn has promotion with capture move", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k6r/6P1/8/8/8/8/8/K7 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert
+		expectedMoves := []string{"g7g8q", "g7g8r", "g7g8b", "g7g8n", "g7h8q", "g7h8r", "g7h8b", "g7h8n",
+			"a1a2", "a1b1", "a1b2"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+}
+
+func TestFEN(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New()
+		require.Nil(t, errOpts)
+
+		// Act
+		fen := c.FEN()
+
+		// Assert
+		require.Equal(t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", fen)
+	})
+
+	t.Run("Manual created Chess - Empty board", func(t *testing.T) {
+		// Arrange
+		c := chess.Chess{}
+
+		// Act
+		assert.Panics(t, func() { c.FEN() })
+	})
 }
 
 func TestMakeMove(t *testing.T) {
-	tests := []struct {
-		name   string
-		opts   []chess.Option
-		move   string
-		FEN    string
-		errMsg string
-	}{
-		{
-			name: "Default",
-			opts: []chess.Option{},
-			move: "e2e4",
-			FEN:  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
-		},
-		{
-			name: "Custom FEN 1",
-			opts: []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
-			move: "d3d4",
-			FEN:  "8/8/8/k7/3P4/K7/8/8 b - - 0 1",
-		},
-		{
-			name: "Custom FEN 2",
-			opts: []chess.Option{chess.WithFEN("8/8/8/8/8/4k3/7r/5K2 w - - 0 1")},
-			move: "f1e1",
-			FEN:  "8/8/8/8/8/4k3/7r/4K3 b - - 1 1",
-		},
-		{
-			name: "Custom FEN 3 - Castle",
-			opts: []chess.Option{chess.WithFEN("k7/8/8/8/8/8/8/4K2R w K - 0 1")},
-			move: "e1g1",
-			FEN:  "k7/8/8/8/8/8/8/5RK1 b - - 1 1",
-		},
-		{
-			name: "Custom FEN 4 - Capture",
-			opts: []chess.Option{chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1")},
-			move: "d1d2",
-			FEN:  "k7/8/8/8/8/8/3K4/8 b - - 0 1",
-		},
-		{
-			name: "Custom FEN 5 - Promotion queen",
-			opts: []chess.Option{chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1")},
-			move: "h7h8q",
-			FEN:  "k6Q/8/8/8/8/8/8/7K b - - 0 1",
-		},
-		{
-			name: "Custom FEN 6 - Promotion rook",
-			opts: []chess.Option{chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1")},
-			move: "h7h8r",
-			FEN:  "k6R/8/8/8/8/8/8/7K b - - 0 1",
-		},
-		{
-			name: "Custom FEN 7 - Promotion bishop",
-			opts: []chess.Option{chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1")},
-			move: "h7h8b",
-			FEN:  "k6B/8/8/8/8/8/8/7K b - - 0 1",
-		},
-		{
-			name: "Custom FEN 8 - Promotion knight",
-			opts: []chess.Option{chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1")},
-			move: "h7h8n",
-			FEN:  "k6N/8/8/8/8/8/8/7K b - - 0 1",
-		},
-		{
-			name:   "Custom FEN 9 - Promotion king - error",
-			opts:   []chess.Option{chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1")},
-			move:   "h7h8k",
-			errMsg: "move is not legal: h7h8k",
-		},
-		{
-			name: "Custom FEN 10 - In passant",
-			opts: []chess.Option{chess.WithFEN("7k/8/8/3pP3/8/8/8/7K w - d6 0 1")},
-			move: "e5d6",
-			FEN:  "7k/8/3P4/8/8/8/8/7K b - - 0 1",
-		},
-		{
-			name:   "Custom FEN 11 - Invalid move - invalid square",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
-			move:   "d3d9",
-			errMsg: "move is not legal: d3d9",
-		},
-	}
+	t.Run("Default", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New()
+		require.Nil(t, errOpts)
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// Arrange
-			c, errOpts := chess.NewChess(test.opts...)
-			require.Nil(t, errOpts)
+		// Act
+		err := c.MakeMove("e2e4")
 
-			// Act
-			err := c.MakeMove(test.move)
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", c.FEN())
+	})
 
-			// Assert
-			if test.errMsg == "" {
-				require.Nil(t, err)
-				assert.Equal(t, test.FEN, c.FEN())
-				return
-			}
+	t.Run("Custom FEN 1", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1"))
+		require.Nil(t, errOpts)
 
-			require.NotNil(t, err)
-			assert.Equal(t, test.errMsg, err.Error())
-		})
-	}
+		// Act
+		err := c.MakeMove("d3d4")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "8/8/8/k7/3P4/K7/8/8 b - - 0 1", c.FEN())
+	})
+
+	t.Run("Custom FEN 2", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/8/8/4k3/7r/5K2 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("f1e1")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "8/8/8/8/8/4k3/7r/4K3 b - - 1 1", c.FEN())
+	})
+
+	t.Run("Castle", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/8/4K2R w K - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("e1g1")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "k7/8/8/8/8/8/8/5RK1 b - - 1 1", c.FEN())
+	})
+
+	t.Run("Capture", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("d1d2")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "k7/8/8/8/8/8/3K4/8 b - - 0 1", c.FEN())
+	})
+
+	t.Run("Promotion Queen", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("h7h8q")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "k6Q/8/8/8/8/8/8/7K b - - 0 1", c.FEN())
+	})
+
+	t.Run("Promotion Rook", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("h7h8r")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "k6R/8/8/8/8/8/8/7K b - - 0 1", c.FEN())
+	})
+
+	t.Run("Promotion Bishop", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("h7h8b")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "k6B/8/8/8/8/8/8/7K b - - 0 1", c.FEN())
+	})
+
+	t.Run("Promotion Knight", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("h7h8n")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "k6N/8/8/8/8/8/8/7K b - - 0 1", c.FEN())
+	})
+
+	t.Run("Promotion King Error", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/7P/8/8/8/8/8/7K w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("h7h8k")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "move is not legal: h7h8k", err.Error())
+	})
+
+	t.Run("En Passant", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("7k/8/8/3pP3/8/8/8/7K w - d6 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("e5d6")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "7k/8/3P4/8/8/8/8/7K b - - 0 1", c.FEN())
+	})
+
+	t.Run("Invalid Move - Invalid Square", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		err := c.MakeMove("d3d9")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "move is not legal: d3d9", err.Error())
+	})
 }
 
 func TestIsCheck(t *testing.T) {
-	tests := []struct {
-		name    string
-		opts    []chess.Option
-		isCheck bool
-		errMsg  string
-	}{
-		{
-			name:    "Default",
-			opts:    []chess.Option{},
-			isCheck: false,
-		},
-		{
-			name:    "Custom FEN - king is in check",
-			opts:    []chess.Option{chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1")},
-			isCheck: true,
-		},
-		{
-			name:    "Custom FEN - king is not in check",
-			opts:    []chess.Option{chess.WithFEN("k7/8/8/8/8/8/8/3K4 w - - 0 1")},
-			isCheck: false,
-		},
-		{
-			name:    "Custom FEN - king is not in the board",
-			opts:    []chess.Option{chess.WithFEN("8/8/8/8/8/8/3q4/8 w - - 0 1")},
-			isCheck: false,
-			errMsg:  "failed to get king position: king not found",
-		},
-	}
+	t.Run("Default", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New()
+		require.Nil(t, errOpts)
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// Arrange
-			c, errOpts := chess.NewChess(test.opts...)
-			require.Nil(t, errOpts)
+		// Assert
+		assert.False(t, c.IsCheck())
+	})
 
-			// Act
-			isCheck, err := c.IsCheck()
+	t.Run("King Is In Check", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1"))
+		require.Nil(t, errOpts)
 
-			// Assert
-			assert.Equal(t, test.isCheck, isCheck)
-			if test.errMsg != "" {
-				require.NotNil(t, err)
-				assert.Equal(t, test.errMsg, err.Error())
-				return
-			}
-			assert.Nil(t, err)
-		})
-	}
+		// Assert
+		assert.True(t, c.IsCheck())
+	})
+
+	t.Run("King Is Not In Check", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/8/3K4 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Assert
+		assert.False(t, c.IsCheck())
+	})
 }
 
 func TestSquare(t *testing.T) {
-	tests := []struct {
-		name   string
-		opts   []chess.Option
-		square string
-		piece  string
-		errMsg string
-	}{
-		{
-			name:   "Default",
-			opts:   []chess.Option{},
-			square: "e2",
-			piece:  "P",
-		},
-		{
-			name:   "Custom FEN",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
-			square: "d3",
-			piece:  "P",
-		},
-		{
-			name:   "Custom FEN - empty square",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
-			square: "a1",
-			piece:  "",
-		},
-		{
-			name:   "Custom FEN - invalid square",
-			opts:   []chess.Option{chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1")},
-			square: "a9",
-			errMsg: "failed to convert algebraic notation to coordinate: coordinate out of bounds",
-		},
-	}
+	t.Run("Default", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New()
+		require.Nil(t, errOpts)
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			// Arrange
-			c, errOpts := chess.NewChess(test.opts...)
-			require.Nil(t, errOpts)
+		// Act
+		piece, err := c.Square("e2")
 
-			// Act
-			piece, err := c.Square(test.square)
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "P", piece)
+	})
 
-			// Assert
-			if test.errMsg != "" {
-				require.NotNil(t, err)
-				assert.Equal(t, test.errMsg, err.Error())
-				return
-			}
+	t.Run("Custom FEN", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1"))
+		require.Nil(t, errOpts)
 
-			require.Nil(t, err)
-			assert.Equal(t, test.piece, piece)
-		})
-	}
+		// Act
+		piece, err := c.Square("d3")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "P", piece)
+	})
+
+	t.Run("Empty Square", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		piece, err := c.Square("a1")
+
+		// Assert
+		require.Nil(t, err)
+		assert.Equal(t, "", piece)
+	})
+
+	t.Run("Invalid Square", func(t *testing.T) {
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("8/8/8/k7/8/K2P4/8/8 w - - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		_, err := c.Square("a9")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "failed to convert algebraic notation to coordinate: coordinate out of bounds", err.Error())
+	})
 }
 
 func TestMakeMove_ScholarMate(t *testing.T) {
 	// Arrange
-	c, err := chess.NewChess()
+	c, err := chess.New()
 	require.Nil(t, err)
 
 	// Act
@@ -474,7 +571,7 @@ func TestMakeMove_ScholarMate(t *testing.T) {
 
 func TestMakeMove_CapablancaSteiner(t *testing.T) {
 	// Arrange
-	c, err := chess.NewChess()
+	c, err := chess.New()
 	require.Nil(t, err)
 
 	// Act
@@ -577,10 +674,259 @@ func TestMakeMove_CapablancaSteiner(t *testing.T) {
 	err = c.MakeMove("b7b4")
 	require.Nil(t, err)
 
-	legalMoves, err := c.AvailableLegalMoves()
+	legalMoves := c.AvailableMoves()
 
 	// Assert
 	assert.Equal(t, "r5r1/p6p/2q5/2k1p3/1Q2P3/2PP4/P1P3PP/6K1 b - - 1 25", c.FEN())
-	assert.Nil(t, err)
 	assert.Nil(t, legalMoves)
+}
+
+func TestLoadPosition_Errors(t *testing.T) {
+	t.Run("Invalid FEN", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("invalid")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid", err.Error())
+	})
+
+	t.Run("Invalid Number of Properties 1", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("8/8/8/8/8/8/8/8")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: 8/8/8/8/8/8/8/8", err.Error())
+	})
+
+	t.Run("Invalid Number of Properties 2", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("8/8/8/8/8/8/8/8 w")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: 8/8/8/8/8/8/8/8 w", err.Error())
+	})
+
+	t.Run("Invalid FEN - 9 Pawns", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/ppppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: rnbqkbnr/ppppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", err.Error())
+	})
+
+	t.Run("Invalid FEN - 1 Pawn and 8 Empty Squares", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/p8/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: rnbqkbnr/p8/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", err.Error())
+	})
+
+	t.Run("Invalid FEN - Invalid Color", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR o KQkq - 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid color: o", err.Error())
+	})
+
+	t.Run("Invalid FEN - Invalid Castles", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w QQQQ - 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid castles: QQQQ", err.Error())
+	})
+
+	t.Run("Invalid FEN - Invalid En Passant square", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e3 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid en passant square: e3", err.Error())
+	})
+
+	t.Run("Invalid FEN - Invalid En Passant square", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq h7 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid en passant square: h7", err.Error())
+	})
+
+	t.Run("Invalid FEN - Invalid En Passant square", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq h9 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid en passant square: h9", err.Error())
+	})
+
+	t.Run("Invalid FEN - Invalid Half Moves", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - J 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid half moves: J", err.Error())
+	})
+
+	t.Run("Invalid FEN - Invalid Moves Count", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 Q")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: invalid moves count: Q", err.Error())
+	})
+
+	t.Run("No White King", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/4P3/8/PPPPPPPP/RNBQ1BNR b KQkq e3 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: both kings must be in the board once", err.Error())
+	})
+
+	t.Run("No Black King", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbq1bnr/pppppppp/8/8/4P3/8/PPPPPPPP/RNBQKBNR b KQkq e3 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: both kings must be in the board once", err.Error())
+	})
+
+	t.Run("Two White Kings", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		// Act
+		err = c.LoadPosition("rnbqkbnr/pppppppp/8/8/4P3/8/PPPPPPPP/RNBKKBNR b KQkq e3 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: both kings must be in the board once", err.Error())
+	})
+
+	t.Run("Position is not legal", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.NoError(t, err)
+		copy := *c
+
+		// Act
+		err = c.LoadPosition("k7/8/8/8/8/8/7r/7K b - - 0 1")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid FEN: the current turn can capture the opponent king", err.Error())
+		assert.Equal(t, copy, *c)
+	})
+}
+
+func TestUnmakeMove(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		if err != nil {
+			t.Errorf("failed to create chess game: %s", err.Error())
+		}
+
+		previousFEN := c.FEN()
+		err = c.MakeMove("e2e4")
+		if err != nil {
+			t.Errorf("failed to make move: %s", err.Error())
+		}
+
+		// Act
+		c.UnmakeMove()
+
+		// Assert
+		assert.Equal(t, previousFEN, c.FEN())
+	})
+
+	t.Run("No Moves", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		if err != nil {
+			t.Errorf("failed to create chess game: %s", err.Error())
+		}
+
+		previousFEN := c.FEN()
+
+		// Act
+		c.UnmakeMove()
+
+		// Assert
+		assert.Equal(t, previousFEN, c.FEN())
+	})
 }
