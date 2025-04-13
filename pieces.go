@@ -1,16 +1,25 @@
-package pkg
+package gochess
 
 const (
-	White int8 = 8
-	Black int8 = 16
+	// White is the integer value of the white color.
+	White int8 = 0b01000
+	// Black is the integer value of the black color.
+	Black int8 = 0b10000
 
-	Empty  int8 = 0
-	Pawn   int8 = 1
-	Knight int8 = 2
-	Bishop int8 = 3
-	Rook   int8 = 4
-	Queen  int8 = 5
-	King   int8 = 6
+	// Empty is the integer value of an empty square.
+	Empty int8 = 0b00000
+	// Pawn is the integer value of a pawn piece.
+	Pawn int8 = 0b00001
+	// Knight is the integer value of a knight piece.
+	Knight int8 = 0b00010
+	// Bishop is the integer value of a bishop piece.
+	Bishop int8 = 0b00011
+	// Rook is the integer value of a rook piece.
+	Rook int8 = 0b00100
+	// Queen is the integer value of a queen piece.
+	Queen int8 = 0b00101
+	// King is the integer value of a king piece.
+	King int8 = 0b00110
 )
 
 var (
@@ -24,6 +33,16 @@ var (
 	ColorNames = map[int8]string{
 		White: "w",
 		Black: "b",
+	}
+
+	// PiecesWithoutColor is a map of piece names to their integer values without color.
+	PiecesWithoutColor = map[string]int8{
+		"p": Pawn, "P": Pawn,
+		"n": Knight, "N": Knight,
+		"b": Bishop, "B": Bishop,
+		"r": Rook, "R": Rook,
+		"q": Queen, "Q": Queen,
+		"k": King, "K": King,
 	}
 
 	// Pieces is a map of piece names to their integer values.
