@@ -8,7 +8,7 @@ all: fmt vet lint test
 
 test:
 	@echo "Ejecutando pruebas..."
-	@go test -v ./...
+	@go test -v ./... | grep "FAIL"
 
 lint: tools
 	@echo "Ejecutando linter..."
