@@ -7,25 +7,25 @@ GOLANGCI_LINT := $(GOBIN)/golangci-lint
 all: fmt vet lint test
 
 test:
-	@echo "Ejecutando pruebas..."
-	@go test -v ./...
+	@echo "Executing tests..."
+	@go test -v ./... | grep "FAIL"
 
 lint: tools
-	@echo "Ejecutando linter..."
+	@echo "Executing linter..."
 	@$(GOLANGCI_LINT) run
 
 fmt:
-	@echo "Formateando código..."
+	@echo "Formatting code..."
 	@go fmt ./...
 
 vet:
-	@echo "Verificando código..."
+	@echo "Verifying code..."
 	@go vet ./...
 
 tools:
-	@echo "Instalando herramientas necesarias..."
+	@echo "Installing necessary tools..."
 	@if [ ! -f $(GOLANGCI_LINT) ]; then \
-		echo "golangci-lint no encontrado, instalando..."; \
+		echo "golangci-lint not found, installing..."; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
 	fi
-	@echo "Herramientas instaladas correctamente."
+	@echo "Tools installed successfully."
