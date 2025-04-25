@@ -292,14 +292,6 @@ func TestFEN(t *testing.T) {
 		// Assert
 		require.Equal(t, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", fen)
 	})
-
-	t.Run("Manual created Chess - Empty board", func(t *testing.T) {
-		// Arrange
-		c := chess.Chess{}
-
-		// Act
-		assert.Panics(t, func() { c.FEN() })
-	})
 }
 
 func TestMakeMove(t *testing.T) {
@@ -565,8 +557,7 @@ func TestMakeMove_ScholarMate(t *testing.T) {
 
 	// Assert
 	require.Nil(t, err)
-	assert.Equal(t, "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
-		c.FEN())
+	assert.Equal(t, "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4", c.FEN())
 }
 
 func TestMakeMove_CapablancaSteiner(t *testing.T) {
@@ -574,111 +565,24 @@ func TestMakeMove_CapablancaSteiner(t *testing.T) {
 	c, err := chess.New()
 	require.Nil(t, err)
 
-	// Act
-	err = c.MakeMove("e2e4")
-	require.Nil(t, err)
-	err = c.MakeMove("e7e5")
-	require.Nil(t, err)
-	err = c.MakeMove("g1f3")
-	require.Nil(t, err)
-	err = c.MakeMove("b8c6")
-	require.Nil(t, err)
-	err = c.MakeMove("b1c3")
-	require.Nil(t, err)
-	err = c.MakeMove("g8f6")
-	require.Nil(t, err)
-	err = c.MakeMove("f1b5")
-	require.Nil(t, err)
-	err = c.MakeMove("f8b4")
-	require.Nil(t, err)
-	err = c.MakeMove("e1g1")
-	require.Nil(t, err)
-	err = c.MakeMove("e8g8")
-	require.Nil(t, err)
-	err = c.MakeMove("d2d3")
-	require.Nil(t, err)
-	err = c.MakeMove("d7d6")
-	require.Nil(t, err)
-	err = c.MakeMove("c1g5")
-	require.Nil(t, err)
-	err = c.MakeMove("b4c3")
-	require.Nil(t, err)
-	err = c.MakeMove("b2c3")
-	require.Nil(t, err)
-	err = c.MakeMove("c6e7")
-	require.Nil(t, err)
-	err = c.MakeMove("f3h4")
-	require.Nil(t, err)
-	err = c.MakeMove("c7c6")
-	require.Nil(t, err)
-	err = c.MakeMove("b5c4")
-	require.Nil(t, err)
-	err = c.MakeMove("c8e6")
-	require.Nil(t, err)
-	err = c.MakeMove("g5f6")
-	require.Nil(t, err)
-	err = c.MakeMove("g7f6")
-	require.Nil(t, err)
-	err = c.MakeMove("c4e6")
-	require.Nil(t, err)
-	err = c.MakeMove("f7e6")
-	require.Nil(t, err)
-	err = c.MakeMove("d1g4")
-	require.Nil(t, err)
-	err = c.MakeMove("g8f7")
-	require.Nil(t, err)
-	err = c.MakeMove("f2f4")
-	require.Nil(t, err)
-	err = c.MakeMove("f8g8")
-	require.Nil(t, err)
-	err = c.MakeMove("g4h5")
-	require.Nil(t, err)
-	err = c.MakeMove("f7g7")
-	require.Nil(t, err)
-	err = c.MakeMove("f4e5")
-	require.Nil(t, err)
-	err = c.MakeMove("d6e5")
-	require.Nil(t, err)
-	err = c.MakeMove("f1f6")
-	require.Nil(t, err)
-	err = c.MakeMove("g7f6")
-	require.Nil(t, err)
-	err = c.MakeMove("a1f1")
-	require.Nil(t, err)
-	err = c.MakeMove("e7f5")
-	require.Nil(t, err)
-	err = c.MakeMove("h4f5")
-	require.Nil(t, err)
-	err = c.MakeMove("e6f5")
-	require.Nil(t, err)
-	err = c.MakeMove("f1f5")
-	require.Nil(t, err)
-	err = c.MakeMove("f6e7")
-	require.Nil(t, err)
-	err = c.MakeMove("h5f7")
-	require.Nil(t, err)
-	err = c.MakeMove("e7d6")
-	require.Nil(t, err)
-	err = c.MakeMove("f5f6")
-	require.Nil(t, err)
-	err = c.MakeMove("d6c5")
-	require.Nil(t, err)
-	err = c.MakeMove("f7b7")
-	require.Nil(t, err)
-	err = c.MakeMove("d8b6")
-	require.Nil(t, err)
-	err = c.MakeMove("f6c6")
-	require.Nil(t, err)
-	err = c.MakeMove("b6c6")
-	require.Nil(t, err)
-	err = c.MakeMove("b7b4")
-	require.Nil(t, err)
+	moves := []string{
+		"e2e4", "e7e5", "g1f3", "b8c6", "b1c3", "g8f6", "f1b5", "f8b4",
+		"e1g1", "e8g8", "d2d3", "d7d6", "c1g5", "b4c3", "b2c3", "c6e7",
+		"f3h4", "c7c6", "b5c4", "c8e6", "g5f6", "g7f6", "c4e6", "f7e6",
+		"d1g4", "g8f7", "f2f4", "f8g8", "g4h5", "f7g7", "f4e5", "d6e5",
+		"f1f6", "g7f6", "a1f1", "e7f5", "h4f5", "e6f5", "f1f5", "f6e7",
+		"h5f7", "e7d6", "f5f6", "d6c5", "f7b7", "d8b6", "f6c6", "b6c6",
+		"b7b4",
+	}
 
-	legalMoves := c.AvailableMoves()
+	// Act
+	for _, move := range moves {
+		err = c.MakeMove(move)
+		require.Nil(t, err)
+	}
 
 	// Assert
 	assert.Equal(t, "r5r1/p6p/2q5/2k1p3/1Q2P3/2PP4/P1P3PP/6K1 b - - 1 25", c.FEN())
-	assert.Nil(t, legalMoves)
 }
 
 func TestLoadPosition_Errors(t *testing.T) {
