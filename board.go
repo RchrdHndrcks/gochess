@@ -10,6 +10,23 @@ type Board struct {
 	width   int
 }
 
+// DefaultChessBoard returns the default chess board.
+func DefaultChessBoard() *Board {
+	return &Board{
+		squares: [][]int8{
+			{Black | Rook, Black | Knight, Black | Bishop, Black | Queen, Black | King, Black | Bishop, Black | Knight, Black | Rook},
+			{Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn},
+			{White | Rook, White | Knight, White | Bishop, White | Queen, White | King, White | Bishop, White | Knight, White | Rook},
+		},
+		width: 8,
+	}
+}
+
 // NewBoard creates a new board.
 //
 // It receives the width of the board and an optional 2D array of pieces.
