@@ -2,6 +2,7 @@ package chess
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/RchrdHndrcks/gochess"
 )
@@ -28,36 +29,28 @@ func (c *Chess) makeMove(move string) {
 
 	if c.isCastleMove(move) {
 		// If the move is a castle move, we need to move the rook too.
-		rookOrigin := castleRook[move]
-		rookTarget := gochess.Coor((o.X+t.X)/2, o.Y)
-
+		//
 		// Ignore the error because the coordinates is valid because
 		// the move is already validated.
-		_ = c.board.MakeMove(rookOrigin, rookTarget)
+		_ = c.board.MakeMove(castleRook[move], gochess.Coor((o.X+t.X)/2, o.Y))
 	}
 
 	if c.isEnPassantMove(move) {
 		// If the move is an en passant capture, we need to remove the captured pawn.
 		// The captured pawn is behind the target square.
-		behindTarget := gochess.Coor(t.X, o.Y)
+		//
 		// Ignore the error because the coordinates is valid because
 		// the move is already validated.
-		_ = c.board.SetSquare(behindTarget, gochess.Empty)
+		_ = c.board.SetSquare(gochess.Coor(t.X, o.Y), gochess.Empty)
 	}
 
-	var madeMove bool
 	// UCI moves only permit 5 characters if the move is a pawn coronation.
-	isPromotion := len(move) == 5
-	if isPromotion {
-		p := gochess.PiecesWithoutColor[move[4:5]]
+	if len(move) == 5 {
 		// Ignore the error because the coordinates is valid because
 		// the move is already validated.
-		_ = c.board.SetSquare(t, p|c.turn)
+		_ = c.board.SetSquare(t, gochess.PiecesWithoutColor[move[4:5]]|c.turn)
 		_ = c.board.SetSquare(o, gochess.Empty)
-		madeMove = true
-	}
-
-	if !madeMove {
+	} else {
 		// Ignore the error because the coordinates is valid because
 		// the move is already validated.
 		_ = c.board.MakeMove(o, t)
@@ -93,6 +86,11 @@ func (c *Chess) makeMove(move string) {
 }
 
 // unmakeMove is a helper function to unmake the last move.
+//
+// Until v1.1.0 unmakeMove was just reloading the last FEN from the history.
+// Now it makes the move back to the board. This change was made because
+// makeMove modifies the current board and unmakeMove was just modifying
+// the board reference.
 func (c *Chess) unmakeMove() {
 	if len(c.history) == 0 {
 		return
@@ -101,12 +99,45 @@ func (c *Chess) unmakeMove() {
 	lastContext := c.history[len(c.history)-1]
 	c.history = c.history[:len(c.history)-1]
 
-	lastFEN := lastContext.fen
-
-	// Ignore the error because the FEN is valid since it was on the board.
-	_ = c.loadPosition(lastFEN)
+	c.halfMoves = lastContext.halfMove
+	c.availableCastles = lastContext.availableCastles
+	c.enPassantSquare = lastContext.enPassantSquare
 	c.whiteKingPosition = lastContext.whiteKingPosition
 	c.blackKingPosition = lastContext.blackKingPosition
+	c.actualFEN = lastContext.fen
+
+	c.toggleColor()
+
+	if c.turn == gochess.Black {
+		c.movesCount--
+	}
+
+	move := lastContext.move
+	o, _ := AlgebraicToCoordinate(move[2:4])
+	t, _ := AlgebraicToCoordinate(move[:2])
+
+	// If it was a promotion, restore the captured piece.
+	if len(move) == 5 {
+		_ = c.board.SetSquare(t, gochess.Pawn|c.turn)
+	} else {
+		// Move the piece back to its original position
+		_ = c.board.MakeMove(o, t)
+	}
+
+	// Check if there was a capture by examining the previous FEN.
+	capturedPiece := pieceFromFEN(lastContext.fen, o)
+	if capturedPiece != gochess.Empty {
+		_ = c.board.SetSquare(o, capturedPiece)
+	}
+
+	if c.isCastleMove(move) {
+		_ = c.board.MakeMove(gochess.Coor((o.X+t.X)/2, o.Y), castleRook[move])
+	}
+
+	if c.isEnPassantMove(move) {
+		// Restore the captured pawn.
+		_ = c.board.SetSquare(gochess.Coor(o.X, t.Y), gochess.Pawn|c.turn)
+	}
 }
 
 // movesForPiece returns the available moves for a piece.
@@ -408,9 +439,57 @@ func destinationMatch(moves []string, destination gochess.Coordinate) bool {
 }
 
 // legalMoves returns the legal moves for the current turn.
-func (c *Chess) legalMoves() []string {
+func (c Chess) legalMoves() []string {
 	moves := c.availableMoves()
+	legalMoves := make([]string, 0, len(moves))
 
+	goroutinesCount := c.config.Parallelism
+	_, ok := c.board.(Cloner)
+	if !ok || goroutinesCount <= 1 {
+		return c.calculateLegalMovesSecuentially(moves)
+	}
+
+	wg := &sync.WaitGroup{}
+	availableMovesChan := make(chan string, goroutinesCount)
+	legalMovesChan := make(chan string, len(moves))
+	wg.Add(goroutinesCount)
+	for range goroutinesCount {
+		go func() {
+			defer wg.Done()
+			copy := c.clone()
+
+			for move := range availableMovesChan {
+				if copy.isLegalMove(move) {
+					legalMovesChan <- move
+				}
+			}
+		}()
+	}
+
+	for _, move := range moves {
+		availableMovesChan <- move
+	}
+
+	close(availableMovesChan)
+	wg.Wait()
+	close(legalMovesChan)
+
+	for move := range legalMovesChan {
+		legalMoves = append(legalMoves, move)
+	}
+
+	// If there are no legal moves, we need to check if position is checkmate or
+	// stalemate.
+	if len(legalMoves) == 0 {
+		if c.isCheck() {
+			legalMoves = nil
+		}
+	}
+
+	return legalMoves
+}
+
+func (c Chess) calculateLegalMovesSecuentially(moves []string) []string {
 	legalMoves := make([]string, 0, len(moves))
 	for _, move := range moves {
 		if c.isLegalMove(move) {
@@ -430,7 +509,7 @@ func (c *Chess) legalMoves() []string {
 }
 
 // availableMoves returns the available moves for the current turn without checking if they are legal.
-func (c *Chess) availableMoves() []string {
+func (c Chess) availableMoves() []string {
 	moves := make([]string, 0, 40)
 	for x := range 8 {
 		for y := range 8 {
@@ -451,8 +530,9 @@ func (c *Chess) availableMoves() []string {
 //
 // It verifies it making the move in a temporary board and checking if the
 // king is in check or the king way is under attack in castling moves.
-func (c *Chess) isLegalMove(move string) bool {
+func (c Chess) isLegalMove(move string) bool {
 	kingsColor := c.turn
+
 	c.makeMove(move)
 
 	availableMoves := c.availableMoves()

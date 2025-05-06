@@ -122,6 +122,17 @@ func (b *Board) SetSquare(c Coordinate, p int8) error {
 	return nil
 }
 
+func (b *Board) Clone() *Board {
+	var cloned Board
+	cloned.squares = make([][]int8, b.width)
+	for i := range b.width {
+		cloned.squares[i] = make([]int8, b.width)
+		copy(cloned.squares[i], b.squares[i])
+	}
+	cloned.width = b.width
+	return &cloned
+}
+
 // isValidCoordinate returns true if the Coordinate is within the board bounds.
 func (b *Board) isValidCoordinate(c Coordinate) bool {
 	return c.X >= 0 && c.X < b.width && c.Y >= 0 && c.Y < b.width

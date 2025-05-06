@@ -7,10 +7,6 @@ import (
 // Option is a function that configures a chess.
 type Option func(*Chess) error
 
-const (
-	defaultFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-)
-
 // WithBoard sets the board of the chess.
 // If the board is nil, it returns an error.
 // If you want to use this option, it must be the first one.

@@ -8,6 +8,12 @@ import (
 )
 
 type (
+	// Cloner is a generic interface for objects that can be cloned.
+	Cloner interface {
+		// Clone returns a clone of the object.
+		Clone() Board
+	}
+
 	// Board represents a chess board.
 	Board interface {
 		// SetSquare sets a piece in a square.
@@ -18,6 +24,10 @@ type (
 		MakeMove(origin, target gochess.Coordinate) error
 		// Width returns the width of the board.
 		Width() int
+	}
+
+	Config struct {
+		Parallelism int
 	}
 
 	// chessContext represents the history of a game.
@@ -62,6 +72,9 @@ type (
 		// whiteKingPosition is the position of the white king.
 		whiteKingPosition *gochess.Coordinate
 
+		// config represents configurations of methods.
+		config Config
+
 		// history is the history of the game.
 		history []chessContext
 	}
@@ -93,7 +106,7 @@ var (
 // New creates a new chess game.
 func New(opts ...Option) (*Chess, error) {
 	c := &Chess{
-		board:            gochess.DefaultChessBoard(),
+		board:            newBoardAdapter(gochess.DefaultChessBoard()),
 		turn:             gochess.White,
 		movesCount:       1,
 		halfMoves:        0,
@@ -107,6 +120,10 @@ func New(opts ...Option) (*Chess, error) {
 		},
 		blackKingPosition: &gochess.Coordinate{X: 4, Y: 0},
 		whiteKingPosition: &gochess.Coordinate{X: 4, Y: 7},
+		config: Config{
+			// TODO: Fix magic number.
+			Parallelism: 15,
+		},
 	}
 
 	for _, opt := range opts {
@@ -167,7 +184,6 @@ func (c *Chess) MakeMove(move string) error {
 // If there are no moves in the history, the function does nothing.
 func (c *Chess) UnmakeMove() {
 	c.unmakeMove()
-	c.actualFEN = c.calculateFEN()
 	c.moves = c.legalMoves()
 }
 
@@ -194,4 +210,47 @@ func (c *Chess) Square(square string) (string, error) {
 	// already validated.
 	p, _ := c.board.Square(coor)
 	return gochess.PieceNames[p], nil
+}
+
+// clone creates a deep copy of the Chess structure.
+func (c Chess) clone() Chess {
+	cloned := c
+
+	cloner, ok := c.board.(Cloner)
+	if ok {
+		cloned.board = cloner.Clone()
+	}
+
+	if c.whiteKingPosition != nil {
+		whitePos := *c.whiteKingPosition
+		cloned.whiteKingPosition = &whitePos
+	}
+	if c.blackKingPosition != nil {
+		blackPos := *c.blackKingPosition
+		cloned.blackKingPosition = &blackPos
+	}
+
+	if len(c.history) > 0 {
+		cloned.history = make([]chessContext, len(c.history))
+		for i, ctx := range c.history {
+			cloned.history[i] = ctx
+			if ctx.whiteKingPosition != nil {
+				whitePos := *ctx.whiteKingPosition
+				cloned.history[i].whiteKingPosition = &whitePos
+			}
+			if ctx.blackKingPosition != nil {
+				blackPos := *ctx.blackKingPosition
+				cloned.history[i].blackKingPosition = &blackPos
+			}
+		}
+	} else {
+		cloned.history = nil
+	}
+
+	if len(c.moves) > 0 {
+		cloned.moves = make([]string, len(c.moves))
+		copy(cloned.moves, c.moves)
+	}
+
+	return cloned
 }

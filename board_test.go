@@ -394,3 +394,19 @@ func TestBoardIsValidCoordinate(t *testing.T) {
 		}
 	})
 }
+
+func TestClone(t *testing.T) {
+	t.Run("Clone", func(t *testing.T) {
+		// Arrange
+		originalBoard, err := gochess.NewBoard(3)
+		require.NoError(t, err)
+		clonedBoard := originalBoard
+
+		// Act
+		clonedBoard = clonedBoard.Clone()
+
+		// Assert
+		assert.NotSame(t, originalBoard, clonedBoard)
+		assert.Equal(t, *originalBoard, *clonedBoard)
+	})
+}

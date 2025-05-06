@@ -414,3 +414,32 @@ func (c Chess) kingsPosition(color int8) gochess.Coordinate {
 
 	return *c.blackKingPosition
 }
+
+// pieceFromFEN is a helper function that returns the piece at the given coordinate
+// in the FEN string.
+//
+// It must be called with a valid coordinate and a valid FEN string.
+// If there is no piece at the given coordinate, it returns gochess.Empty.
+func pieceFromFEN(fen string, coord gochess.Coordinate) int8 {
+	fenRow := strings.Split(strings.Split(fen, " ")[0], "/")[coord.Y]
+	var count int
+	for _, c := range fenRow {
+		n, err := strconv.Atoi(string(c))
+		if err == nil {
+			count += n
+			if count > coord.X {
+				return gochess.Empty
+			}
+
+			continue
+		}
+
+		if count == coord.X {
+			return gochess.Pieces[string(c)]
+		}
+
+		count++
+	}
+
+	return gochess.Empty
+}
