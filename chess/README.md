@@ -34,6 +34,8 @@ func (c *Chess) AvailableMoves() []string
 func (c *Chess) MakeMove(move string) error
 func (c *Chess) UnmakeMove()
 func (c *Chess) IsCheck() bool
+func (c *Chess) IsCheckmate() bool
+func (c *Chess) IsStalemate() bool
 func (c *Chess) LoadPosition(fen string) error
 func (c *Chess) Clone() *Chess
 ```
@@ -50,7 +52,11 @@ func (c *Chess) Clone() *Chess
 
 - `UnmakeMove()`: Reverts the last move made, restoring the previous position.
 
-- `IsCheck() bool`: Returns whether the current player's king is in check.
+- `IsCheck() bool`: Returns whether the current player's king is in check. If the position is checkmate or stalemate, it returns false.
+
+- `IsCheckmate() bool`: Returns whether the current player's king is in checkmate.
+
+- `IsStalemate() bool`: Returns whether the game is in stalemate.
 
 - `LoadPosition(fen string) error`: Sets up the board according to the provided FEN string.
 
@@ -103,7 +109,6 @@ type Board interface {
     LoadPosition(string) error
     Square(c pkg.Coordinate) (int8, error)
     AvailableMoves(turn int8, enPassantSquare, castlePossibilities string) ([]string, error)
-    MakeMove(string) error
     Width() int
 }
 ```

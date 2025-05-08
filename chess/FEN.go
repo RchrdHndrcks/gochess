@@ -396,7 +396,12 @@ func (c *Chess) toggleColor() {
 	c.turn = gochess.White
 }
 
+// isCheck is the helper function that checks if the current turn is in check.
 func (c Chess) isCheck() bool {
+	if c.blackKingPosition == nil || c.whiteKingPosition == nil {
+		return false
+	}
+
 	kingPosition := c.kingsPosition(c.turn)
 
 	c.toggleColor()

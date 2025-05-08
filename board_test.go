@@ -90,7 +90,7 @@ func TestNewBoard(t *testing.T) {
 	})
 }
 
-func TestBoardWidth(t *testing.T) {
+func TestWidth(t *testing.T) {
 	t.Run("Returns Correct Width", func(t *testing.T) {
 		// Arrange
 		board, err := gochess.NewBoard(8)
@@ -121,7 +121,7 @@ func TestBoardWidth(t *testing.T) {
 	})
 }
 
-func TestBoardSquare(t *testing.T) {
+func TestSquare(t *testing.T) {
 	t.Run("Valid Coordinates", func(t *testing.T) {
 		// Arrange
 		squares := [][]int8{
@@ -190,89 +190,7 @@ func TestBoardSquare(t *testing.T) {
 	})
 }
 
-func TestBoardMakeMove(t *testing.T) {
-	t.Run("Valid Move", func(t *testing.T) {
-		// Arrange
-		squares := [][]int8{
-			{gochess.Empty, gochess.Empty, gochess.Empty},
-			{gochess.Empty, gochess.White | gochess.King, gochess.Empty},
-			{gochess.Empty, gochess.Empty, gochess.Empty},
-		}
-
-		board, err := gochess.NewBoard(3, squares...)
-		require.NoError(t, err)
-
-		// Act
-		err = board.MakeMove(gochess.Coor(1, 1), gochess.Coor(2, 2))
-
-		// Assert
-		require.NoError(t, err)
-
-		// Verify the move was made correctly
-		originPiece, err := board.Square(gochess.Coor(1, 1))
-		require.NoError(t, err)
-		assert.Equal(t, gochess.Empty, originPiece)
-
-		targetPiece, err := board.Square(gochess.Coor(2, 2))
-		require.NoError(t, err)
-		assert.Equal(t, gochess.White|gochess.King, targetPiece)
-	})
-
-	t.Run("Capture Move", func(t *testing.T) {
-		// Arrange
-		squares := [][]int8{
-			{gochess.Empty, gochess.Empty, gochess.Empty},
-			{gochess.Empty, gochess.White | gochess.King, gochess.Empty},
-			{gochess.Empty, gochess.Empty, gochess.Black | gochess.Queen},
-		}
-
-		board, err := gochess.NewBoard(3, squares...)
-		require.NoError(t, err)
-
-		// Act
-		err = board.MakeMove(gochess.Coor(1, 1), gochess.Coor(2, 2))
-
-		// Assert
-		require.NoError(t, err)
-
-		// Verify the move was made correctly
-		originPiece, err := board.Square(gochess.Coor(1, 1))
-		require.NoError(t, err)
-		assert.Equal(t, gochess.Empty, originPiece)
-
-		targetPiece, err := board.Square(gochess.Coor(2, 2))
-		require.NoError(t, err)
-		assert.Equal(t, gochess.White|gochess.King, targetPiece)
-	})
-
-	t.Run("Invalid Origin Coordinate", func(t *testing.T) {
-		// Arrange
-		board, err := gochess.NewBoard(3)
-		require.NoError(t, err)
-
-		// Act
-		err = board.MakeMove(gochess.Coor(-1, 0), gochess.Coor(1, 1))
-
-		// Assert
-		require.Error(t, err)
-		assert.EqualError(t, err, "board: invalid coordinate: (-1,0)")
-	})
-
-	t.Run("Invalid Target Coordinate", func(t *testing.T) {
-		// Arrange
-		board, err := gochess.NewBoard(3)
-		require.NoError(t, err)
-
-		// Act
-		err = board.MakeMove(gochess.Coor(1, 1), gochess.Coor(3, 3))
-
-		// Assert
-		require.Error(t, err)
-		assert.EqualError(t, err, "board: invalid coordinate: (3,3)")
-	})
-}
-
-func TestBoardSetSquare(t *testing.T) {
+func TestSetSquare(t *testing.T) {
 	t.Run("Valid Coordinate", func(t *testing.T) {
 		// Arrange
 		board, err := gochess.NewBoard(3)
@@ -350,51 +268,6 @@ func TestBoardSetSquare(t *testing.T) {
 	})
 }
 
-func TestBoardIsValidCoordinate(t *testing.T) {
-	// Since isValidCoordinate is a private method, we'll test it indirectly through Square
-	t.Run("Valid and Invalid Coordinates", func(t *testing.T) {
-		// Arrange
-		board, err := gochess.NewBoard(3)
-		require.NoError(t, err)
-
-		// Test cases
-		testCases := []struct {
-			coord    gochess.Coordinate
-			expected bool
-		}{
-			// Valid coordinates
-			{gochess.Coor(0, 0), true},
-			{gochess.Coor(1, 1), true},
-			{gochess.Coor(2, 2), true},
-			{gochess.Coor(0, 2), true},
-			{gochess.Coor(2, 0), true},
-
-			// Invalid coordinates
-			{gochess.Coor(-1, 0), false},
-			{gochess.Coor(0, -1), false},
-			{gochess.Coor(3, 0), false},
-			{gochess.Coor(0, 3), false},
-			{gochess.Coor(3, 3), false},
-			{gochess.Coor(-1, -1), false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(fmt.Sprintf("Coordinate(%d,%d)", tc.coord.X, tc.coord.Y), func(t *testing.T) {
-				// Act
-				_, err := board.Square(tc.coord)
-
-				// Assert
-				if tc.expected {
-					assert.NoError(t, err)
-				} else {
-					assert.Error(t, err)
-					assert.Contains(t, err.Error(), "invalid coordinate")
-				}
-			})
-		}
-	})
-}
-
 func TestClone(t *testing.T) {
 	t.Run("Clone", func(t *testing.T) {
 		// Arrange
@@ -409,4 +282,13 @@ func TestClone(t *testing.T) {
 		assert.NotSame(t, originalBoard, clonedBoard)
 		assert.Equal(t, *originalBoard, *clonedBoard)
 	})
+}
+
+func TestDefaultChessBoard(t *testing.T) {
+	// Arrange
+	board := gochess.DefaultChessBoard()
+
+	// Assert
+	assert.NotNil(t, board)
+	assert.Equal(t, 8, board.Width())
 }

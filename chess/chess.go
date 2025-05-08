@@ -21,8 +21,6 @@ type (
 		SetSquare(c gochess.Coordinate, p int8) error
 		// Square returns the piece in a square.
 		Square(c gochess.Coordinate) (int8, error)
-		// MakeMove makes a move without checking if it is legal.
-		MakeMove(origin, target gochess.Coordinate) error
 		// Width returns the width of the board.
 		Width() int
 	}
@@ -49,6 +47,12 @@ type (
 		whiteKingPosition *gochess.Coordinate
 		// blackKingPosition is the position of the black king.
 		blackKingPosition *gochess.Coordinate
+		// check is true if the current turn is in check.
+		check bool
+		// checkmate is true if the current turn is in checkmate.
+		checkmate bool
+		// stalemate is true if the current turn is in stalemate.
+		stalemate bool
 	}
 
 	// Chess represents a Chess game.
@@ -74,6 +78,12 @@ type (
 		blackKingPosition *gochess.Coordinate
 		// whiteKingPosition is the position of the white king.
 		whiteKingPosition *gochess.Coordinate
+		// check is true if the current turn is in check.
+		check bool
+		// checkmate is true if the current turn is in checkmate.
+		checkmate bool
+		// stalemate is true if the current turn is in stalemate.
+		stalemate bool
 
 		// config represents configurations of how the methods will work.
 		config config
@@ -133,6 +143,9 @@ func New(opts ...Option) (*Chess, error) {
 		},
 		blackKingPosition: &gochess.Coordinate{X: 4, Y: 0},
 		whiteKingPosition: &gochess.Coordinate{X: 4, Y: 7},
+		check:             false,
+		checkmate:         false,
+		stalemate:         false,
 		config: config{
 			// To maximize performance chess uses twice the number of available
 			// CPUs. If you are running on a container environment or you want to
@@ -163,6 +176,10 @@ func (c *Chess) LoadPosition(FEN string) error {
 
 	c.actualFEN = FEN
 	c.moves = c.legalMoves()
+	check := c.isCheck()
+	c.check = check && len(c.moves) > 0
+	c.checkmate = check && len(c.moves) == 0
+	c.stalemate = !check && len(c.moves) == 0
 	return nil
 }
 
@@ -174,8 +191,9 @@ func (c *Chess) FEN() string {
 }
 
 // AvailableMoves returns the available legal moves for the current turn.
-// It returns an empty slice if position is stalemate.
-// It returns a nil slice if position is checkmate.
+//
+// It always returns a non nil slice. It could be empty if the position is
+// checkmate or stalemate.
 func (c *Chess) AvailableMoves() []string {
 	return c.moves
 }
@@ -190,6 +208,10 @@ func (c *Chess) MakeMove(move string) error {
 	c.makeMove(move)
 	c.actualFEN = c.calculateFEN(move)
 	c.moves = c.legalMoves()
+	check := c.isCheck()
+	c.check = check && len(c.moves) > 0
+	c.checkmate = check && len(c.moves) == 0
+	c.stalemate = !check && len(c.moves) == 0
 	return nil
 }
 
@@ -204,11 +226,17 @@ func (c *Chess) UnmakeMove() {
 
 // IsCheck returns if the current turn is in check.
 func (c *Chess) IsCheck() bool {
-	if c.blackKingPosition == nil || c.whiteKingPosition == nil {
-		return false
-	}
+	return c.check
+}
 
-	return c.isCheck()
+// IsCheckmate returns if the current turn is in checkmate.
+func (c *Chess) IsCheckmate() bool {
+	return c.checkmate
+}
+
+// IsStalemate returns if the current turn is in stalemate.
+func (c *Chess) IsStalemate() bool {
+	return c.stalemate
 }
 
 // Square returns the piece in a square.
