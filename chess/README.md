@@ -35,6 +35,7 @@ func (c *Chess) MakeMove(move string) error
 func (c *Chess) UnmakeMove()
 func (c *Chess) IsCheck() bool
 func (c *Chess) LoadPosition(fen string) error
+func (c *Chess) Clone() *Chess
 ```
 
 ### Core Functions
@@ -52,6 +53,8 @@ func (c *Chess) LoadPosition(fen string) error
 - `IsCheck() bool`: Returns whether the current player's king is in check.
 
 - `LoadPosition(fen string) error`: Sets up the board according to the provided FEN string.
+
+- `Clone() *Chess`: Returns a copy of the chess game.
 
 ## Creating a Chess Game
 
@@ -89,6 +92,8 @@ The `New` function accepts options to customize the chess game:
 
 - `WithFEN(fen string)`: Sets up the board using the provided FEN string.
 
+- `WithParallelism(parallelism int)`: Sets the number of parallel workers to use for move generation. The default is twice the number of CPU cores.
+
 ## Board Interface
 
 Any board implementation used with the Chess package must satisfy this interface:
@@ -122,3 +127,28 @@ game, err := chess.New(chess.WithBoard(customBoard))
 ```
 
 This modular approach allows you to focus only on the aspects that differ in your variant while leveraging the existing chess logic for everything else.
+
+## Performance Optimization
+
+### Parallel Move Calculation
+
+GoChess uses a parallel processing approach to calculate legal moves, which significantly improves performance on multi-core systems:
+
+- **Automatic Parallelism**: By default, GoChess uses twice as many workers as available CPU cores to maximize performance.
+- **Efficient Cloning**: The system implements a `Cloner` interface that allows creating independent copies of the board for each worker, avoiding race conditions.
+- **Customizable Configuration**: The level of parallelism can be adjusted using the `WithParallelism` option, allowing optimization based on the execution environment.
+
+```go
+// Create a game with a specific level of parallelism
+game, err := chess.New(chess.WithParallelism(4))
+```
+
+### Memory Optimizations
+
+- **Capacity Preallocation**: Slices for storing moves are preallocated with specific capacities based on the piece type.
+- **Efficient Representation**: Pieces are represented using bits, allowing fast operations and minimal memory usage.
+
+### Environment Adaptation
+
+- **Containerized Environments**: In environments with limited resources, it is recommended to manually adjust the level of parallelism. If you are using a containerized environment, you should set the parallelism manually to avoid issues with the number of available CPU cores.
+- **Sequential Mode**: For applications that do not require high performance, it can be configured to perform calculations sequentially.

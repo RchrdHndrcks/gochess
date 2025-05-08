@@ -10,6 +10,23 @@ type Board struct {
 	width   int
 }
 
+// DefaultChessBoard returns the default chess board.
+func DefaultChessBoard() *Board {
+	return &Board{
+		squares: [][]int8{
+			{Black | Rook, Black | Knight, Black | Bishop, Black | Queen, Black | King, Black | Bishop, Black | Knight, Black | Rook},
+			{Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
+			{White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn, White | Pawn},
+			{White | Rook, White | Knight, White | Bishop, White | Queen, White | King, White | Bishop, White | Knight, White | Rook},
+		},
+		width: 8,
+	}
+}
+
 // NewBoard creates a new board.
 //
 // It receives the width of the board and an optional 2D array of pieces.
@@ -103,6 +120,18 @@ func (b *Board) SetSquare(c Coordinate, p int8) error {
 
 	b.squares[c.Y][c.X] = p
 	return nil
+}
+
+// Clone returns a copy of the board.
+func (b *Board) Clone() *Board {
+	var cloned Board
+	cloned.squares = make([][]int8, b.width)
+	for i := range b.width {
+		cloned.squares[i] = make([]int8, b.width)
+		copy(cloned.squares[i], b.squares[i])
+	}
+	cloned.width = b.width
+	return &cloned
 }
 
 // isValidCoordinate returns true if the Coordinate is within the board bounds.

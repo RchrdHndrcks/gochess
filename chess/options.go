@@ -2,16 +2,10 @@ package chess
 
 import (
 	"fmt"
-
-	"github.com/RchrdHndrcks/gochess"
 )
 
 // Option is a function that configures a chess.
 type Option func(*Chess) error
-
-const (
-	defaultFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-)
 
 // WithBoard sets the board of the chess.
 // If the board is nil, it returns an error.
@@ -28,11 +22,6 @@ func WithBoard(b Board) Option {
 // If you try to set the FEN before the board, it will set the default board.
 func WithFEN(FEN string) Option {
 	return func(c *Chess) error {
-		if c.board == nil {
-			b, _ := gochess.NewBoard(8)
-			_ = WithBoard(b)(c)
-		}
-
 		if err := c.LoadPosition(FEN); err != nil {
 			return fmt.Errorf("failed to load position: %w", err)
 		}
@@ -41,14 +30,12 @@ func WithFEN(FEN string) Option {
 	}
 }
 
-// defaultOptions check if the setted options are valid and if not, set the default options.
-func defaultOptions(chess *Chess) {
-	if chess.board == nil {
-		b, _ := gochess.NewBoard(8)
-		_ = WithBoard(b)(chess)
-	}
-
-	if chess.FEN() == "" {
-		_ = WithFEN(defaultFEN)(chess)
+// WithParallelism sets the number of workers to use for the moves calculation.
+// If the number of workers is less or equal to 1, the Chess will use the sequential
+// version without throwing goroutines.
+func WithParallelism(n int) Option {
+	return func(c *Chess) error {
+		c.config.Parallelism = n
+		return nil
 	}
 }
