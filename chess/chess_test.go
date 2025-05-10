@@ -249,7 +249,9 @@ func TestAvailableMoves(t *testing.T) {
 		moves := c.AvailableMoves()
 
 		// Assert
-		assert.Nil(t, moves)
+		assert.Len(t, moves, 0)
+		assert.True(t, c.IsCheckmate())
+		assert.False(t, c.IsStalemate())
 	})
 
 	t.Run("King Is In Stalemate", func(t *testing.T) {
@@ -261,8 +263,9 @@ func TestAvailableMoves(t *testing.T) {
 		moves := c.AvailableMoves()
 
 		// Assert
-		expectedMoves := []string{}
-		assert.ElementsMatch(t, expectedMoves, moves)
+		assert.Len(t, moves, 0)
+		assert.True(t, c.IsStalemate())
+		assert.False(t, c.IsCheckmate())
 	})
 
 	t.Run("Pawn has promotion with capture move", func(t *testing.T) {
@@ -460,6 +463,8 @@ func TestIsCheck(t *testing.T) {
 
 		// Assert
 		assert.False(t, c.IsCheck())
+		assert.False(t, c.IsCheckmate())
+		assert.False(t, c.IsStalemate())
 	})
 
 	t.Run("King Is In Check", func(t *testing.T) {
@@ -469,6 +474,8 @@ func TestIsCheck(t *testing.T) {
 
 		// Assert
 		assert.True(t, c.IsCheck())
+		assert.False(t, c.IsCheckmate())
+		assert.False(t, c.IsStalemate())
 	})
 
 	t.Run("King Is Not In Check", func(t *testing.T) {
@@ -478,6 +485,8 @@ func TestIsCheck(t *testing.T) {
 
 		// Assert
 		assert.False(t, c.IsCheck())
+		assert.False(t, c.IsCheckmate())
+		assert.False(t, c.IsStalemate())
 	})
 }
 
@@ -816,6 +825,64 @@ func TestUnmakeMove(t *testing.T) {
 
 		// Assert
 		assert.Equal(t, previousFEN, c.FEN())
+	})
+
+	t.Run("Move is checkmate", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New(chess.WithFEN("k7/7R/K7/8/8/8/8/8 w - - 0 1"))
+		if err != nil {
+			t.Errorf("failed to create chess game: %s", err.Error())
+		}
+
+		previousFEN := c.FEN()
+		err = c.MakeMove("h7h8")
+		if err != nil {
+			t.Errorf("failed to make move: %s", err.Error())
+		}
+		postCheck := c.IsCheck()
+		postCheckmate := c.IsCheckmate()
+		postStalemate := c.IsStalemate()
+
+		// Act
+		c.UnmakeMove()
+
+		// Assert
+		assert.Equal(t, previousFEN, c.FEN())
+		assert.False(t, postCheck)
+		assert.True(t, postCheckmate)
+		assert.False(t, postStalemate)
+		assert.Equal(t, c.IsCheck(), postCheck)
+		assert.NotEqual(t, c.IsCheckmate(), postCheckmate)
+		assert.Equal(t, c.IsStalemate(), postStalemate)
+
+		t.Run("Move is stalemate", func(t *testing.T) {
+			// Arrange
+			c, err := chess.New(chess.WithFEN("k7/7R/K7/8/8/8/8/8 w - - 0 1"))
+			if err != nil {
+				t.Errorf("failed to create chess game: %s", err.Error())
+			}
+
+			previousFEN := c.FEN()
+			err = c.MakeMove("h7b7")
+			if err != nil {
+				t.Errorf("failed to make move: %s", err.Error())
+			}
+			postCheck := c.IsCheck()
+			postCheckmate := c.IsCheckmate()
+			postStalemate := c.IsStalemate()
+
+			// Act
+			c.UnmakeMove()
+
+			// Assert
+			assert.Equal(t, previousFEN, c.FEN())
+			assert.False(t, postCheck)
+			assert.False(t, postCheckmate)
+			assert.True(t, postStalemate)
+			assert.Equal(t, c.IsCheck(), postCheck)
+			assert.Equal(t, c.IsCheckmate(), postCheckmate)
+			assert.NotEqual(t, c.IsStalemate(), postStalemate)
+		})
 	})
 
 	t.Run("No Moves", func(t *testing.T) {

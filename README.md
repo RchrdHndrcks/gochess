@@ -87,7 +87,6 @@ The `Board` exports the following functions:
 ```go
 Width() int
 Square(c Coordinate) (int8, error)
-MakeMove(origin, target Coordinate) error
 SetSquare(c Coordinate, p int8) error
 Clone() *Board
 ```

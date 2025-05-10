@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#19](https://github.com/RchrdHndrcks/gochess/pull/19) Improve API for Chess and Board.
 - [#16](https://github.com/RchrdHndrcks/gochess/pull/16) Adjust API and efficiency.
 
 ## [1.1.0] - 2025-04-23

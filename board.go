@@ -88,28 +88,6 @@ func (b *Board) Square(c Coordinate) (int8, error) {
 	return b.squares[c.Y][c.X], nil
 }
 
-// MakeMove makes a move on the board.
-//
-// It doesn't make any game logic validation on the move.
-// It will return ErrInvalidCoordinate if the coordinate is out of bounds.
-//
-// It is the caller's responsibility to make sure the move is valid in terms
-// of game logic, including if the origin square is not empty, if the target
-// square is empty or if the move is valid for the piece.
-func (b *Board) MakeMove(origin, target Coordinate) error {
-	if !b.isValidCoordinate(origin) {
-		return fmt.Errorf("board: %w: %v", ErrInvalidCoordinate, origin)
-	}
-
-	if !b.isValidCoordinate(target) {
-		return fmt.Errorf("board: %w: %v", ErrInvalidCoordinate, target)
-	}
-
-	b.squares[target.Y][target.X] = b.squares[origin.Y][origin.X]
-	b.squares[origin.Y][origin.X] = Empty
-	return nil
-}
-
 // SetSquare sets a piece in a square.
 //
 // It will return ErrInvalidCoordinate if the coordinate is out of bounds.

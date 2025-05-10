@@ -32,7 +32,7 @@ func (c *Chess) makeMove(move string) {
 		//
 		// Ignore the error because the coordinates is valid because
 		// the move is already validated.
-		_ = c.board.MakeMove(castleRook[move], gochess.Coor((o.X+t.X)/2, o.Y))
+		c.makeMoveOnBoard(castleRook[move], gochess.Coor((o.X+t.X)/2, o.Y))
 	}
 
 	if c.isEnPassantMove(move) {
@@ -53,7 +53,7 @@ func (c *Chess) makeMove(move string) {
 	} else {
 		// Ignore the error because the coordinates is valid because
 		// the move is already validated.
-		_ = c.board.MakeMove(o, t)
+		c.makeMoveOnBoard(o, t)
 	}
 
 	c.history = append(
@@ -66,6 +66,9 @@ func (c *Chess) makeMove(move string) {
 			enPassantSquare:   c.enPassantSquare,
 			whiteKingPosition: c.whiteKingPosition,
 			blackKingPosition: c.blackKingPosition,
+			check:             c.check,
+			checkmate:         c.checkmate,
+			stalemate:         c.stalemate,
 		},
 	)
 
@@ -83,6 +86,15 @@ func (c *Chess) makeMove(move string) {
 	c.updateCastlePossibilities()
 	c.updateHalfMoves()
 	c.updateEnPassantSquare()
+}
+
+// makeMoveOnBoard is a helper function to make a move on the board.
+//
+// It must be used only when the move is already validated.
+func (c *Chess) makeMoveOnBoard(origin, target gochess.Coordinate) {
+	p, _ := c.board.Square(origin)
+	_ = c.board.SetSquare(origin, gochess.Empty)
+	_ = c.board.SetSquare(target, p)
 }
 
 // unmakeMove is a helper function to unmake the last move.
@@ -105,6 +117,9 @@ func (c *Chess) unmakeMove() {
 	c.whiteKingPosition = lastContext.whiteKingPosition
 	c.blackKingPosition = lastContext.blackKingPosition
 	c.actualFEN = lastContext.fen
+	c.check = lastContext.check
+	c.checkmate = lastContext.checkmate
+	c.stalemate = lastContext.stalemate
 
 	c.toggleColor()
 
@@ -121,7 +136,7 @@ func (c *Chess) unmakeMove() {
 		_ = c.board.SetSquare(t, gochess.Pawn|c.turn)
 	} else {
 		// Move the piece back to its original position
-		_ = c.board.MakeMove(o, t)
+		c.makeMoveOnBoard(o, t)
 	}
 
 	// Check if there was a capture by examining the previous FEN.
@@ -131,7 +146,7 @@ func (c *Chess) unmakeMove() {
 	}
 
 	if c.isCastleMove(move) {
-		_ = c.board.MakeMove(gochess.Coor((o.X+t.X)/2, o.Y), castleRook[move])
+		c.makeMoveOnBoard(gochess.Coor((o.X+t.X)/2, o.Y), castleRook[move])
 	}
 
 	if c.isEnPassantMove(move) {
@@ -478,14 +493,6 @@ func (c Chess) legalMoves() []string {
 		legalMoves = append(legalMoves, move)
 	}
 
-	// If there are no legal moves, we need to check if position is checkmate or
-	// stalemate.
-	if len(legalMoves) == 0 {
-		if c.isCheck() {
-			legalMoves = nil
-		}
-	}
-
 	return legalMoves
 }
 
@@ -494,14 +501,6 @@ func (c Chess) calculateLegalMovesSecuentially(moves []string) []string {
 	for _, move := range moves {
 		if c.isLegalMove(move) {
 			legalMoves = append(legalMoves, move)
-		}
-	}
-
-	// If there are no legal moves, we need to check if position is checkmate or
-	// stalemate.
-	if len(legalMoves) == 0 {
-		if c.isCheck() {
-			legalMoves = nil
 		}
 	}
 
