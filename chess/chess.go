@@ -118,15 +118,15 @@ var (
 
 // New creates a new chess game.
 //
-// The function will up a pool of workers to maximize performance on the
-// moves calculation.
+// The chess.AvailableMoves method will use a pool of workers to maximize
+// performance on the moves calculation.
 // By default, the number of workers is twice the number of available CPUs.
 // If you are running on a container environment or you want to use the
 // sequential version, you should set this value manually using the
 // WithParallelism option.
 // The pool of workers will be used only if the board implements the Cloner
-// interface. If you are using a custom Board implementation, you should
-// implement the Cloner interface to take advantage of the parallelism.
+// interface. If you are using a custom Board with the WithBoard option, you
+// should implement the Cloner interface to take advantage of the parallelism.
 func New(opts ...Option) (*Chess, error) {
 	c := &Chess{
 		board:            newBoardAdapter(gochess.DefaultChessBoard()),
