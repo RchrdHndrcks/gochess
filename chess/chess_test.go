@@ -3,6 +3,7 @@ package chess_test
 import (
 	"testing"
 
+	"github.com/RchrdHndrcks/gochess"
 	"github.com/RchrdHndrcks/gochess/chess"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -550,22 +551,30 @@ func TestMakeMove_ScholarMate(t *testing.T) {
 	require.Nil(t, err)
 
 	// Act
+	assert.Equal(t, gochess.White, c.Turn())
 	err = c.MakeMove("e2e4")
 	require.Nil(t, err)
+	assert.Equal(t, gochess.Black, c.Turn())
 	err = c.MakeMove("e7e5")
 	require.Nil(t, err)
+	assert.Equal(t, gochess.White, c.Turn())
 	err = c.MakeMove("f1c4")
 	require.Nil(t, err)
+	assert.Equal(t, gochess.Black, c.Turn())
 	err = c.MakeMove("b8c6")
 	require.Nil(t, err)
+	assert.Equal(t, gochess.White, c.Turn())
 	err = c.MakeMove("d1h5")
 	require.Nil(t, err)
+	assert.Equal(t, gochess.Black, c.Turn())
 	err = c.MakeMove("g8f6")
 	require.Nil(t, err)
+	assert.Equal(t, gochess.White, c.Turn())
 	err = c.MakeMove("h5f7")
+	require.Nil(t, err)
+	assert.Equal(t, gochess.Black, c.Turn())
 
 	// Assert
-	require.Nil(t, err)
 	assert.Equal(t, "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4", c.FEN())
 }
 
