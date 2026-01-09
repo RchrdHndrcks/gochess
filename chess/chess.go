@@ -183,6 +183,13 @@ func (c *Chess) LoadPosition(FEN string) error {
 	return nil
 }
 
+// Turn returns the current turn.
+//
+// It will be gochess.White or gochess.Black.
+func (c *Chess) Turn() int8 {
+	return c.turn
+}
+
 // FEN returns the FEN string of the current position.
 //
 // If any of the kings is not in the board, the function returns an empty string.

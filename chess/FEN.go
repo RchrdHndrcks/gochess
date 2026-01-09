@@ -35,9 +35,9 @@ func (c *Chess) loadPosition(FEN string) error {
 	var whiteKing, blackKing int
 	var whiteKingPosition, blackKingPosition *gochess.Coordinate
 
-	brd := make([][]int8, 8, 8)
+	brd := make([][]int8, 8)
 	for y := range 8 {
-		row := make([]int8, 8, 8)
+		row := make([]int8, 8)
 
 		if len(fenRows[y]) == 0 || len(fenRows[y]) > 8 {
 			return fmt.Errorf("invalid FEN: %s", FEN)

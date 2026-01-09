@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-01-09
+
+### Added
+
+- [#23](https://github.com/RchrdHndrcks/gochess/pull/23) Add Turn method to Chess.
+
 ## [1.2.0] - 2025-05-09
 
 ### Changed

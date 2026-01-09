@@ -29,6 +29,7 @@ The `Chess` package exports the following key functions:
 
 ```go
 func New(options ...Option) (*Chess, error)
+func (c *Chess) Turn() int8
 func (c *Chess) FEN() string
 func (c *Chess) AvailableMoves() []string
 func (c *Chess) MakeMove(move string) error
@@ -43,6 +44,8 @@ func (c *Chess) Clone() *Chess
 ### Core Functions
 
 - `New(options ...Option)`: Creates a new chess game with the specified options. Without options, it creates a standard starting position.
+
+- `Turn() int8`: Returns the current turn. It will be gochess.White or gochess.Black.
 
 - `FEN() string`: Returns the current position in Forsyth-Edwards Notation (FEN).
 
@@ -81,6 +84,9 @@ err = game.MakeMove("e2e4")
 if err != nil {
     // Handle error
 }
+
+// Get the current turn
+turn := game.Turn()
 ```
 
 ### Custom Starting Position
