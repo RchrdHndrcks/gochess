@@ -841,6 +841,47 @@ func TestLoadPosition_Errors(t *testing.T) {
 	})
 }
 
+func TestIsFiftyMoveRule(t *testing.T) {
+	t.Run("Default position is not fifty-move rule", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.Nil(t, err)
+
+		// Assert
+		assert.False(t, c.IsFiftyMoveRule())
+	})
+
+	t.Run("Position with 99 half-moves becomes fifty-move rule after non-pawn non-capture move", func(t *testing.T) {
+		// Arrange
+		// FEN with halfmoves=99: two kings and two rooks, white to move
+		c, err := chess.New(chess.WithFEN("k7/8/8/8/8/8/8/K6R w - - 99 50"))
+		require.Nil(t, err)
+		assert.False(t, c.IsFiftyMoveRule())
+
+		// Act - make a non-pawn, non-capture move (rook move)
+		err = c.MakeMove("h1g1")
+		require.Nil(t, err)
+
+		// Assert - halfMoves should now be 100
+		assert.True(t, c.IsFiftyMoveRule())
+	})
+
+	t.Run("Pawn move resets counter", func(t *testing.T) {
+		// Arrange
+		// FEN with halfmoves=99: king and pawn, white to move
+		c, err := chess.New(chess.WithFEN("k7/8/8/8/8/8/P7/K7 w - - 99 50"))
+		require.Nil(t, err)
+		assert.False(t, c.IsFiftyMoveRule())
+
+		// Act - make a pawn move
+		err = c.MakeMove("a2a3")
+		require.Nil(t, err)
+
+		// Assert - counter should be reset, not fifty-move rule
+		assert.False(t, c.IsFiftyMoveRule())
+	})
+}
+
 func TestUnmakeMove(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
 		// Arrange
