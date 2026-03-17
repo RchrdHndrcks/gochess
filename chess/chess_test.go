@@ -2,6 +2,7 @@ package chess_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/RchrdHndrcks/gochess"
@@ -976,4 +977,96 @@ func TestUnmakeMove(t *testing.T) {
 		// Assert
 		assert.Equal(t, previousFEN, c.FEN())
 	})
+}
+
+func TestMakeMove_InvalidMoves(t *testing.T) {
+	tests := []struct {
+		name string
+		move string
+	}{
+		{"same square", "e2e2"},
+		{"out of range rank", "e2e9"},
+		{"out of range file", "z1e4"},
+		{"opponent piece on whites turn", "e7e5"},
+		{"empty square at start", "e3e4"},
+		{"gibberish short", "abc"},
+		{"empty string", ""},
+		{"gibberish long", "12345"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			c, err := chess.New()
+			require.NoError(t, err)
+
+			// Act
+			err = c.MakeMove(tt.move)
+
+			// Assert
+			require.Error(t, err, "expected error for move %q", tt.move)
+			assert.Contains(t, err.Error(), "move is not legal")
+		})
+	}
+}
+
+func TestUnmakeMove_NoHistory(t *testing.T) {
+	// Arrange
+	c, err := chess.New()
+	require.NoError(t, err)
+
+	fenBefore := c.FEN()
+	turnBefore := c.Turn()
+	movesBefore := c.AvailableMoves()
+	checkBefore := c.IsCheck()
+	checkmateBefore := c.IsCheckmate()
+	stalemateBefore := c.IsStalemate()
+
+	// Act - should not panic and should be a no-op
+	c.UnmakeMove()
+
+	// Assert - game state should remain identical
+	assert.Equal(t, fenBefore, c.FEN())
+	assert.Equal(t, turnBefore, c.Turn())
+	assert.ElementsMatch(t, movesBefore, c.AvailableMoves())
+	assert.Equal(t, checkBefore, c.IsCheck())
+	assert.Equal(t, checkmateBefore, c.IsCheckmate())
+	assert.Equal(t, stalemateBefore, c.IsStalemate())
+}
+
+func TestAvailableMoves_Consistency(t *testing.T) {
+	// Play a short sequence of moves and after each one verify that:
+	// 1. Every move from AvailableMoves() can be played via MakeMove().
+	// 2. A move NOT in AvailableMoves() is rejected by MakeMove().
+	c, err := chess.New()
+	require.NoError(t, err)
+
+	gameSequence := []string{"e2e4", "e7e5", "g1f3", "b8c6", "f1c4"}
+
+	for _, move := range gameSequence {
+		err := c.MakeMove(move)
+		require.NoError(t, err)
+
+		available := c.AvailableMoves()
+		require.NotNil(t, available, "AvailableMoves should never return nil")
+
+		// Verify every available move can actually be played (use a clone-like approach).
+		for _, m := range available {
+			clone, err := chess.New(chess.WithFEN(c.FEN()))
+			require.NoError(t, err, "failed to create game from FEN %s", c.FEN())
+
+			err = clone.MakeMove(m)
+			assert.NoError(t, err, "available move %q should be playable after move %q", m, move)
+		}
+
+		// Pick a few illegal moves and verify they are rejected.
+		illegalCandidates := []string{"a1a8", "e1e8", "h1h8", "z9z9", ""}
+		for _, illegal := range illegalCandidates {
+			if slices.Contains(available, illegal) {
+				continue // skip if it happens to be legal
+			}
+			err = c.MakeMove(illegal)
+			assert.Error(t, err, "move %q should be illegal after move %q", illegal, move)
+		}
+	}
 }
