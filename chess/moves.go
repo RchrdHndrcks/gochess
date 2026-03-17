@@ -200,7 +200,7 @@ func (c Chess) pawnMoves(origin gochess.Coordinate) []string {
 	}
 
 	if isPromotion {
-		return append(c.pawnCaptureMoves(origin, true), c.promotionPosibilities(origin, tCor)...)
+		return append(c.pawnCaptureMoves(origin, true), c.promotionPossibilities(origin, tCor)...)
 	}
 
 	if !(dir == 1 && origin.Y == 1) && !(dir == -1 && origin.Y == 6) {
@@ -248,15 +248,15 @@ func (c Chess) pawnCaptureMoves(origin gochess.Coordinate, isPromotion bool) []s
 			continue
 		}
 
-		moves = append(moves, c.promotionPosibilities(origin, tCor)...)
+		moves = append(moves, c.promotionPossibilities(origin, tCor)...)
 	}
 
 	return moves
 }
 
-// promotionPosibilities is a helper function that returns the UCI moves with
+// promotionPossibilities is a helper function that returns the UCI moves with
 // the value of the piece to be promoted.
-func (c Chess) promotionPosibilities(origin, target gochess.Coordinate) []string {
+func (c Chess) promotionPossibilities(origin, target gochess.Coordinate) []string {
 	moves := make([]string, 4)
 	for i, p := range []int8{gochess.Queen, gochess.Rook, gochess.Bishop, gochess.Knight} {
 		moves[i] = UCI(origin, target, p)
