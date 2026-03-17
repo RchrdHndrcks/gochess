@@ -853,7 +853,7 @@ func TestIsFiftyMoveRule(t *testing.T) {
 
 	t.Run("Position with 99 half-moves becomes fifty-move rule after non-pawn non-capture move", func(t *testing.T) {
 		// Arrange
-		// FEN with halfmoves=99: two kings and two rooks, white to move
+		// FEN with halfmoves=99: two kings and a rook, white to move
 		c, err := chess.New(chess.WithFEN("k7/8/8/8/8/8/8/K6R w - - 99 50"))
 		require.Nil(t, err)
 		assert.False(t, c.IsFiftyMoveRule())
