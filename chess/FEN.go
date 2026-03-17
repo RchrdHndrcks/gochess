@@ -50,7 +50,10 @@ func (c *Chess) loadPosition(FEN string) error {
 			n, err := strconv.Atoi(char)
 			// If c is not a number, it's a piece.
 			if err != nil {
-				p := gochess.Pieces[char]
+				p, ok := gochess.Pieces[char]
+				if !ok {
+					return fmt.Errorf("invalid FEN: unknown piece character: %s", char)
+				}
 				row[x] = p
 				coor := gochess.Coor(x, y)
 				if p == gochess.King|gochess.White {
@@ -440,7 +443,10 @@ func pieceFromFEN(fen string, coord gochess.Coordinate) int8 {
 		}
 
 		if count == coord.X {
-			return gochess.Pieces[string(c)]
+			if p, ok := gochess.Pieces[string(c)]; ok {
+				return p
+			}
+			return gochess.Empty
 		}
 
 		count++
