@@ -161,7 +161,7 @@ func (c *Chess) unmakeMove() {
 // (e.g. "e2e4" for moving the piece at e2 to e4.)
 // Disclaimer: This function does not check if the move is legal for a Chess game.
 func (c Chess) movesForPiece(piece gochess.Piece, origin gochess.Coordinate) []string {
-	switch piece &^ (gochess.White | gochess.Black) {
+	switch gochess.PieceType(piece) {
 	case gochess.Pawn:
 		return c.pawnMoves(origin)
 	case gochess.Rook:
@@ -219,7 +219,7 @@ func (c Chess) pawnMoves(origin gochess.Coordinate) []string {
 // pawnCaptureMoves returns all the valid pawn capture moves.
 func (c Chess) pawnCaptureMoves(origin gochess.Coordinate, isPromotion bool) []string {
 	p, _ := c.board.Square(origin)
-	pColor := p & (gochess.White | gochess.Black)
+	pColor := gochess.PieceColor(p)
 	dir := -1
 	if pColor == gochess.Black {
 		dir = 1
@@ -295,7 +295,7 @@ func (c Chess) kingCastleMoves(origin gochess.Coordinate) []string {
 	}
 
 	p, _ := c.board.Square(origin)
-	kingColor := p & (gochess.White | gochess.Black)
+	kingColor := gochess.PieceColor(p)
 
 	castleDirections := map[string]int{
 		"k": 1, "K": 1,
@@ -353,7 +353,7 @@ func (c Chess) queenMoves(origin gochess.Coordinate) []string {
 func (c Chess) slidingPieces(origin gochess.Coordinate, offsets []gochess.Coordinate) []string {
 	p, _ := c.board.Square(origin)
 
-	color := p & (gochess.White | gochess.Black)
+	color := gochess.PieceColor(p)
 	moves := make([]string, 0, capacityByPiece[p])
 	for _, d := range offsets {
 		for i := 1; ; i++ {
@@ -384,7 +384,7 @@ func (c Chess) slidingPieces(origin gochess.Coordinate, offsets []gochess.Coordi
 func (c Chess) oneStepPieces(origin gochess.Coordinate, offsets []gochess.Coordinate) []string {
 	p, _ := c.board.Square(origin)
 
-	color := p & (gochess.White | gochess.Black)
+	color := gochess.PieceColor(p)
 	moves := make([]string, 0, 8)
 	for _, d := range offsets {
 		tCor := gochess.Coor(origin.X+d.X, origin.Y+d.Y)
@@ -435,7 +435,7 @@ func (c Chess) isEnPassantMove(move string) bool {
 	}
 
 	p, _ := c.board.Square(origin)
-	return p&^(gochess.White|gochess.Black) == gochess.Pawn
+	return gochess.PieceType(p) == gochess.Pawn
 }
 
 // destinationMatch looks for a destination in a list of moves.

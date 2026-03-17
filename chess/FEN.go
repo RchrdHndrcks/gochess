@@ -302,7 +302,7 @@ func (c *Chess) updateHalfMoves() {
 	coor, _ := AlgebraicToCoordinate(target)
 	p, _ := c.board.Square(coor)
 
-	piece := p &^ (gochess.White | gochess.Black)
+	piece := gochess.PieceType(p)
 	if piece == gochess.Pawn {
 		c.halfMoves = 0
 	}
@@ -323,7 +323,7 @@ func (c *Chess) updateEnPassantSquare() {
 	dest, _ := AlgebraicToCoordinate(lastMove[2:])
 	p, _ := c.board.Square(dest)
 
-	if p&^(gochess.White|gochess.Black) != gochess.Pawn {
+	if gochess.PieceType(p) != gochess.Pawn {
 		return
 	}
 
@@ -359,7 +359,7 @@ func (c Chess) validateEnPassant(square string) error {
 
 	auxCoor := gochess.Coor(coor.X, yCoor)
 	p, _ := c.board.Square(auxCoor)
-	if p&^color != gochess.Pawn {
+	if gochess.PieceType(p) != gochess.Pawn {
 		return errors.New("invalid in passant square")
 	}
 
