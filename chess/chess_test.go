@@ -619,7 +619,22 @@ func TestIsInsufficientMaterial(t *testing.T) {
 		},
 		{
 			name: "King + Pawn vs King",
-			fen:  "4k3/8/8/8/8/4P3/4K3 w - - 0 1",
+			fen:  "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Two Knights vs King is sufficient",
+			fen:  "4k3/8/8/8/8/8/8/4KNN1 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Knight vs King + Knight is sufficient",
+			fen:  "4k1n1/8/8/8/8/8/8/4K1N1 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Bishop vs King + Knight is sufficient",
+			fen:  "4k1n1/8/8/8/8/8/8/4K1B1 w - - 0 1",
 			want: false,
 		},
 	}
