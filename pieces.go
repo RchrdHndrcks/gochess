@@ -31,7 +31,7 @@ func PieceColor(piece Piece) Piece {
 }
 
 // PieceType returns the type portion of a piece (Pawn, Knight, Bishop, etc.)
-// stripping the color bits.
+// by stripping the color bits.
 func PieceType(piece Piece) Piece {
 	return piece &^ (White | Black)
 }
