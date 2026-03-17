@@ -257,6 +257,70 @@ func (c *Chess) IsFiftyMoveRule() bool {
 	return c.halfMoves >= 100
 }
 
+// IsInsufficientMaterial returns true if neither side has sufficient material
+// to checkmate the opponent. The following positions are considered
+// insufficient material:
+//   - King vs King
+//   - King + Knight vs King
+//   - King + Bishop vs King
+//   - King + Bishop vs King + Bishop (bishops on same color squares)
+func (c *Chess) IsInsufficientMaterial() bool {
+	width := c.board.Width()
+
+	var knights, bishops int
+	var bishopSquareColor int // stores (x+y)%2 of the first bishop found
+	bishopSquareColor = -1
+	allBishopsSameColor := true
+
+	for y := range width {
+		for x := range width {
+			piece, _ := c.board.Square(gochess.Coor(x, y))
+			if piece == gochess.Empty {
+				continue
+			}
+
+			pieceType := piece & 0b00111
+			switch pieceType {
+			case gochess.King:
+				// Kings are always present, skip them.
+				continue
+			case gochess.Knight:
+				knights++
+			case gochess.Bishop:
+				bishops++
+				sc := (x + y) % 2
+				if bishopSquareColor == -1 {
+					bishopSquareColor = sc
+				} else if sc != bishopSquareColor {
+					allBishopsSameColor = false
+				}
+			default:
+				// Any other piece (pawn, rook, queen) means sufficient material.
+				return false
+			}
+		}
+	}
+
+	totalMinor := knights + bishops
+
+	// King vs King
+	if totalMinor == 0 {
+		return true
+	}
+
+	// King + single minor piece vs King
+	if totalMinor == 1 {
+		return true
+	}
+
+	// King + Bishop vs King + Bishop on same color squares
+	if knights == 0 && bishops == 2 && allBishopsSameColor {
+		return true
+	}
+
+	return false
+}
+
 // Square returns the piece in a square.
 // The square is represented by an algebraic notation.
 //
