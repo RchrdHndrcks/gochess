@@ -258,7 +258,7 @@ func (c *Chess) Square(square string) (string, error) {
 
 	p, err := c.board.Square(coor)
 	if err != nil {
-		return "", fmt.Errorf("failed to get piece from board: %w", err)
+		return "", fmt.Errorf("failed to get piece from board at %s: %w", square, err)
 	}
 
 	return gochess.PieceNames[p], nil
