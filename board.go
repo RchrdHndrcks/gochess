@@ -6,14 +6,14 @@ import (
 
 // Board is a 2D array of pieces.
 type Board struct {
-	squares [][]int8
+	squares [][]Piece
 	width   int
 }
 
 // DefaultChessBoard returns the default chess board.
 func DefaultChessBoard() *Board {
 	return &Board{
-		squares: [][]int8{
+		squares: [][]Piece{
 			{Black | Rook, Black | Knight, Black | Bishop, Black | Queen, Black | King, Black | Bishop, Black | Knight, Black | Rook},
 			{Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn, Black | Pawn},
 			{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
@@ -37,7 +37,7 @@ func DefaultChessBoard() *Board {
 // - The width of the squares is different from the width of the board.
 // - The length of the squares array is different from the width of the board.
 // - The length of the inner arrays is different from the width of the board.
-func NewBoard(width int, squares ...[]int8) (*Board, error) {
+func NewBoard(width int, squares ...[]Piece) (*Board, error) {
 	if width < 1 {
 		return nil, fmt.Errorf("board: %w: %d", ErrInvalidWidth, width)
 	}
@@ -61,9 +61,9 @@ func NewBoard(width int, squares ...[]int8) (*Board, error) {
 		}, nil
 	}
 
-	s := make([][]int8, width)
+	s := make([][]Piece, width)
 	for i := range width {
-		s[i] = make([]int8, width)
+		s[i] = make([]Piece, width)
 	}
 
 	return &Board{
@@ -80,7 +80,7 @@ func (b *Board) Width() int {
 // Square returns the piece at the given Coordinate.
 //
 // It returns ErrInvalidCoordinate if the Coordinate is out of bounds.
-func (b *Board) Square(c Coordinate) (int8, error) {
+func (b *Board) Square(c Coordinate) (Piece, error) {
 	if !b.isValidCoordinate(c) {
 		return Empty, fmt.Errorf("board: %w: %v", ErrInvalidCoordinate, c)
 	}
@@ -91,7 +91,7 @@ func (b *Board) Square(c Coordinate) (int8, error) {
 // SetSquare sets a piece in a square.
 //
 // It will return ErrInvalidCoordinate if the coordinate is out of bounds.
-func (b *Board) SetSquare(c Coordinate, p int8) error {
+func (b *Board) SetSquare(c Coordinate, p Piece) error {
 	if !b.isValidCoordinate(c) {
 		return fmt.Errorf("board: %w: %v", ErrInvalidCoordinate, c)
 	}
@@ -103,9 +103,9 @@ func (b *Board) SetSquare(c Coordinate, p int8) error {
 // Clone returns a copy of the board.
 func (b *Board) Clone() *Board {
 	var cloned Board
-	cloned.squares = make([][]int8, b.width)
+	cloned.squares = make([][]Piece, b.width)
 	for i := range b.width {
-		cloned.squares[i] = make([]int8, b.width)
+		cloned.squares[i] = make([]Piece, b.width)
 		copy(cloned.squares[i], b.squares[i])
 	}
 	cloned.width = b.width

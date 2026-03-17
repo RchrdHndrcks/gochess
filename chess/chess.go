@@ -18,9 +18,9 @@ type (
 	// Board represents a chess board.
 	Board interface {
 		// SetSquare sets a piece in a square.
-		SetSquare(c gochess.Coordinate, p int8) error
+		SetSquare(c gochess.Coordinate, p gochess.Piece) error
 		// Square returns the piece in a square.
-		Square(c gochess.Coordinate) (int8, error)
+		Square(c gochess.Coordinate) (gochess.Piece, error)
 		// Width returns the width of the board.
 		Width() int
 	}
@@ -59,7 +59,7 @@ type (
 	Chess struct {
 		board Board
 		// turn is the current turn.
-		turn int8
+		turn gochess.Piece
 		// movesCount is the number of moves played in algebaric notation.
 		// It will increase by 1 after each black move.
 		movesCount uint64
@@ -94,7 +94,7 @@ type (
 )
 
 var (
-	castlesMoves = map[string]int8{
+	castlesMoves = map[string]gochess.Piece{
 		"e1g1": gochess.White,
 		"e1c1": gochess.White,
 		"e8g8": gochess.Black,
@@ -186,7 +186,7 @@ func (c *Chess) LoadPosition(FEN string) error {
 // Turn returns the current turn.
 //
 // It will be gochess.White or gochess.Black.
-func (c *Chess) Turn() int8 {
+func (c *Chess) Turn() gochess.Piece {
 	return c.turn
 }
 

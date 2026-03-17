@@ -32,7 +32,7 @@ func TestNewBoard(t *testing.T) {
 
 	t.Run("With Valid Squares", func(t *testing.T) {
 		// Arrange
-		squares := [][]int8{
+		squares := [][]gochess.Piece{
 			{gochess.Empty, gochess.Empty, gochess.Empty},
 			{gochess.Empty, gochess.White | gochess.King, gochess.Empty},
 			{gochess.Empty, gochess.Empty, gochess.Black | gochess.Queen},
@@ -58,7 +58,7 @@ func TestNewBoard(t *testing.T) {
 
 	t.Run("With Invalid Squares Length", func(t *testing.T) {
 		// Arrange
-		squares := [][]int8{
+		squares := [][]gochess.Piece{
 			{gochess.Empty, gochess.Empty},
 			{gochess.Empty, gochess.White | gochess.King},
 		}
@@ -74,7 +74,7 @@ func TestNewBoard(t *testing.T) {
 
 	t.Run("With Invalid Row Length", func(t *testing.T) {
 		// Arrange
-		squares := [][]int8{
+		squares := [][]gochess.Piece{
 			{gochess.Empty, gochess.Empty, gochess.Empty},
 			{gochess.Empty, gochess.White | gochess.King},
 			{gochess.Empty, gochess.Empty, gochess.Black | gochess.Queen},
@@ -124,7 +124,7 @@ func TestWidth(t *testing.T) {
 func TestSquare(t *testing.T) {
 	t.Run("Valid Coordinates", func(t *testing.T) {
 		// Arrange
-		squares := [][]int8{
+		squares := [][]gochess.Piece{
 			{gochess.White | gochess.Rook, gochess.White | gochess.Knight, gochess.White | gochess.Bishop},
 			{gochess.White | gochess.Pawn, gochess.Empty, gochess.Empty},
 			{gochess.Empty, gochess.Black | gochess.Pawn, gochess.Empty},
@@ -136,7 +136,7 @@ func TestSquare(t *testing.T) {
 		// Test cases
 		testCases := []struct {
 			coord    gochess.Coordinate
-			expected int8
+			expected gochess.Piece
 		}{
 			{gochess.Coor(0, 0), gochess.White | gochess.Rook},
 			{gochess.Coor(1, 0), gochess.White | gochess.Knight},
@@ -216,7 +216,7 @@ func TestSetSquare(t *testing.T) {
 		// Test cases
 		testCases := []struct {
 			coord gochess.Coordinate
-			piece int8
+			piece gochess.Piece
 		}{
 			{gochess.Coor(0, 0), gochess.White | gochess.Rook},
 			{gochess.Coor(1, 0), gochess.White | gochess.Knight},
