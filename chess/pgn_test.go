@@ -80,6 +80,26 @@ func TestToPGN(t *testing.T) {
 			assert.LessOrEqual(t, len(line), 80, "line exceeds 80 characters: %s", line)
 		}
 	})
+
+	t.Run("Tag values with special characters", func(t *testing.T) {
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		tags := chess.PGNTags{
+			Event: "He said \"hello\"",
+			Site:  "path\\to\\file",
+		}
+		pgn := c.ToPGN(tags)
+
+		assert.Contains(t, pgn, "[Event \"He said \\\"hello\\\"\"]")
+		assert.Contains(t, pgn, "[Site \"path\\\\to\\\\file\"]")
+
+		// Roundtrip: parse back and verify unescaped values.
+		parsedTags, _, err := chess.ParsePGN(pgn)
+		require.NoError(t, err)
+		assert.Equal(t, "He said \"hello\"", parsedTags.Event)
+		assert.Equal(t, "path\\to\\file", parsedTags.Site)
+	})
 }
 
 func TestParsePGN(t *testing.T) {
@@ -120,6 +140,20 @@ func TestParsePGN(t *testing.T) {
 
 		assert.Equal(t, "?", tags.Event)
 		assert.Equal(t, "*", tags.Result)
+
+		expectedMoves := []string{"e2e4", "e7e5", "g1f3", "b8c6"}
+		assert.Equal(t, expectedMoves, moves)
+	})
+
+	t.Run("PGN with semicolon comments", func(t *testing.T) {
+		pgn := `[Event "?"]
+[Result "*"]
+
+1. e2e4 e7e5 ; this is a comment
+2. g1f3 b8c6 *
+`
+		_, moves, err := chess.ParsePGN(pgn)
+		require.NoError(t, err)
 
 		expectedMoves := []string{"e2e4", "e7e5", "g1f3", "b8c6"}
 		assert.Equal(t, expectedMoves, moves)

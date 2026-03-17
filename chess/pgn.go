@@ -75,7 +75,15 @@ func ParsePGN(pgn string) (PGNTags, []string, error) {
 		}
 	}
 
-	moveText := strings.Join(lines[moveTextStart:], " ")
+	// Strip semicolon comments (rest-of-line) before joining.
+	cleanedLines := make([]string, 0, len(lines)-moveTextStart)
+	for _, l := range lines[moveTextStart:] {
+		if idx := strings.Index(l, ";"); idx >= 0 {
+			l = l[:idx]
+		}
+		cleanedLines = append(cleanedLines, l)
+	}
+	moveText := strings.Join(cleanedLines, " ")
 	moves := parseMoveText(moveText)
 
 	return tags, moves, nil
@@ -147,8 +155,11 @@ func wrapLines(text string, maxWidth int) string {
 }
 
 // writeTag writes a PGN tag pair to the builder.
+// It escapes backslashes and double quotes per PGN specification.
 func writeTag(sb *strings.Builder, name, value string) {
-	sb.WriteString(fmt.Sprintf("[%s \"%s\"]\n", name, value))
+	escaped := strings.ReplaceAll(value, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	sb.WriteString(fmt.Sprintf("[%s \"%s\"]\n", name, escaped))
 }
 
 // tagValue returns the value or "?" if empty.
@@ -171,7 +182,14 @@ func parseTag(tags *PGNTags, line string) error {
 	}
 
 	name := parts[0]
-	value := strings.Trim(parts[1], "\"")
+	raw := parts[1]
+	// Strip surrounding quotes.
+	if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
+		raw = raw[1 : len(raw)-1]
+	}
+	// Unescape per PGN specification.
+	value := strings.ReplaceAll(raw, `\"`, `"`)
+	value = strings.ReplaceAll(value, `\\`, `\`)
 
 	switch name {
 	case "Event":
