@@ -56,6 +56,8 @@ type (
 	}
 
 	// Chess represents a Chess game.
+	//
+	// A Chess value is not safe for concurrent use by multiple goroutines.
 	Chess struct {
 		board Board
 		// turn is the current turn.
