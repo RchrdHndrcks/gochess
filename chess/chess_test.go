@@ -921,6 +921,7 @@ func TestLoadPosition_Errors(t *testing.T) {
 
 func TestIsFiftyMoveRule(t *testing.T) {
 	t.Run("Default position is not fifty-move rule", func(t *testing.T) {
+
 		// Arrange
 		c, err := chess.New()
 		require.Nil(t, err)
@@ -957,8 +958,49 @@ func TestIsFiftyMoveRule(t *testing.T) {
 
 		// Assert - counter should be reset, not fifty-move rule
 		assert.False(t, c.IsFiftyMoveRule())
+
 	})
 }
+
+func TestIsThreefoldRepetition(t *testing.T) {
+	t.Run("Default position is not repeated", func(t *testing.T) {
+
+		// Arrange
+		c, err := chess.New()
+		require.Nil(t, err)
+
+		// Assert
+		assert.False(t, c.IsThreefoldRepetition())
+	})
+
+	t.Run("Position repeating 3 times via knight moves", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.Nil(t, err)
+
+		// The starting position FEN position key is:
+		// rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
+		// We return to this exact position by moving knights back and forth.
+		// After each full cycle (4 half-moves), we're back at the start.
+
+		moves := []string{
+			// Cycle 1: leaves starting position (occurrence 1), returns to it (occurrence 2)
+			"g1f3", "g8f6", "f3g1", "f6g8",
+			// Cycle 2: leaves starting position (occurrence 2), returns to it (occurrence 3)
+			"g1f3", "g8f6", "f3g1", "f6g8",
+		}
+
+		for _, move := range moves {
+			err = c.MakeMove(move)
+			require.Nil(t, err)
+		}
+
+		// Assert - the starting position has now appeared 3 times
+		assert.True(t, c.IsThreefoldRepetition())
+
+	})
+}
+
 
 func TestUnmakeMove(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
