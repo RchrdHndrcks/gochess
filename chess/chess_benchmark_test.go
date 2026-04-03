@@ -38,7 +38,7 @@ func BenchmarkCapablancaSteiner(b *testing.B) {
 			b.Fatalf("Unexpected final position: %s", c.FEN())
 		}
 
-		if c.AvailableMoves() != nil {
+		if len(c.AvailableMoves()) != 0 {
 			b.Fatalf("Expected no legal moves, but got some")
 		}
 	}
