@@ -256,9 +256,11 @@ func (c *Chess) Square(square string) (string, error) {
 		return "", fmt.Errorf("failed to convert algebraic notation to coordinate: %w", err)
 	}
 
-	// Ignore the error because the coordinates is
-	// already validated.
-	p, _ := c.board.Square(coor)
+	p, err := c.board.Square(coor)
+	if err != nil {
+		return "", fmt.Errorf("failed to get piece from board at %s: %w", square, err)
+	}
+
 	return gochess.PieceNames[p], nil
 }
 

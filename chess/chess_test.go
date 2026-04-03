@@ -1,6 +1,7 @@
 package chess_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/RchrdHndrcks/gochess"
@@ -543,7 +544,32 @@ func TestSquare(t *testing.T) {
 		require.NotNil(t, err)
 		assert.Equal(t, "failed to convert algebraic notation to coordinate: coordinate out of bounds", err.Error())
 	})
+
+	t.Run("Board error is propagated", func(t *testing.T) {
+		// Arrange
+		boardErr := errors.New("custom board failure")
+		c, errOpts := chess.New(chess.WithBoard(&errorBoard{squareErr: boardErr}))
+		require.Nil(t, errOpts)
+
+		// Act
+		piece, err := c.Square("e2")
+
+		// Assert
+		require.NotNil(t, err)
+		assert.Empty(t, piece)
+		assert.ErrorIs(t, err, boardErr)
+		assert.Contains(t, err.Error(), "e2")
+	})
 }
+
+// errorBoard is a mock Board implementation that returns an error on Square().
+type errorBoard struct {
+	squareErr error
+}
+
+func (b *errorBoard) SetSquare(_ gochess.Coordinate, _ int8) error { return nil }
+func (b *errorBoard) Square(_ gochess.Coordinate) (int8, error)    { return 0, b.squareErr }
+func (b *errorBoard) Width() int                                   { return 8 }
 
 func TestMakeMove_ScholarMate(t *testing.T) {
 	// Arrange
