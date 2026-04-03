@@ -44,6 +44,8 @@ func (c *Chess) Clone() *Chess
 func (c *Chess) PGN(tags pgn.PGNTags) string
 // Parse and PGNTags live in the chess/pgn sub-package:
 // pgn.Parse(pgnStr string) (pgn.PGNTags, []string, error)
+func (c *Chess) SAN(uciMove string) (string, error)
+func (c *Chess) FromSAN(san string) (string, error)
 ```
 
 ### Core Functions
@@ -77,6 +79,10 @@ func (c *Chess) PGN(tags pgn.PGNTags) string
 - `PGN(tags pgn.PGNTags) string`: Generates a PGN string from the current game's move history and the provided tags (event, site, date, white/black player names, result). `PGNTags` and the result constants (`ResultWhiteWins`, `ResultBlackWins`, `ResultDraw`, `ResultOngoing`) are defined in the `chess/pgn` sub-package.
 
 - `pgn.Parse(pgnStr string) (pgn.PGNTags, []string, error)`: Parses a PGN string and returns the tag pairs and move list in UCI format. Lives in the `chess/pgn` sub-package.
+
+- `SAN(uciMove string) (string, error)`: Converts a UCI move (e.g. "e2e4") to Standard Algebraic Notation (e.g. "e4"). The move must be legal in the current position.
+
+- `FromSAN(san string) (string, error)`: Converts a SAN move (e.g. "Nf3") to UCI format (e.g. "g1f3"). The SAN must correspond to a legal move in the current position.
 
 ## Creating a Chess Game
 
