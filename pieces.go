@@ -25,6 +25,17 @@ const (
 	King Piece = 0b00110
 )
 
+// PieceColor returns the color portion of a piece (White or Black).
+func PieceColor(piece Piece) Piece {
+	return piece & (White | Black)
+}
+
+// PieceType returns the type portion of a piece (Pawn, Knight, Bishop, etc.)
+// by stripping the color bits.
+func PieceType(piece Piece) Piece {
+	return piece &^ (White | Black)
+}
+
 var (
 	// Colors is a map of color names to their integer values.
 	Colors = map[string]Piece{
