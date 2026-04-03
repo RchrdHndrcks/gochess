@@ -351,10 +351,8 @@ func (c Chess) validateEnPassant(square string) error {
 	}
 
 	yCoor := 4
-	color := gochess.White
 	if coor.Y == 2 {
 		yCoor = 3
-		color = gochess.Black
 	}
 
 	auxCoor := gochess.Coor(coor.X, yCoor)
