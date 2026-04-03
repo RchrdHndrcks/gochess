@@ -269,6 +269,10 @@ func (c *Chess) updateCastlePossibilities() {
 // It must be called after a move is made. If no move was made,
 // the function will panic.
 func (c *Chess) updateHalfMoves() {
+	if len(c.history) == 0 {
+		return
+	}
+
 	c.halfMoves++
 	h := c.history[len(c.history)-1]
 
