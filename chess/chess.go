@@ -288,7 +288,7 @@ func (c *Chess) IsInsufficientMaterial() bool {
 				continue
 			}
 
-			pieceType := piece &^ (gochess.White | gochess.Black)
+			pieceType := gochess.PieceType(piece)
 			switch pieceType {
 			case gochess.King:
 				// Kings are always present, skip them.
