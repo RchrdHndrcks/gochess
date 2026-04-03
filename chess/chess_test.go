@@ -567,9 +567,9 @@ type errorBoard struct {
 	squareErr error
 }
 
-func (b *errorBoard) SetSquare(_ gochess.Coordinate, _ int8) error { return nil }
-func (b *errorBoard) Square(_ gochess.Coordinate) (int8, error)    { return 0, b.squareErr }
-func (b *errorBoard) Width() int                                   { return 8 }
+func (b *errorBoard) SetSquare(_ gochess.Coordinate, _ gochess.Piece) error { return nil }
+func (b *errorBoard) Square(_ gochess.Coordinate) (gochess.Piece, error)    { return 0, b.squareErr }
+func (b *errorBoard) Width() int                                             { return 8 }
 
 func TestMakeMove_ScholarMate(t *testing.T) {
 	// Arrange
