@@ -40,6 +40,8 @@ func (c *Chess) IsStalemate() bool
 func (c *Chess) IsFiftyMoveRule() bool
 func (c *Chess) LoadPosition(fen string) error
 func (c *Chess) Clone() *Chess
+func (c *Chess) PGN(tags PGNTags) (string, error)
+func ParsePGN(pgn string) (PGNTags, []string, error)
 ```
 
 ### Core Functions
@@ -67,6 +69,10 @@ func (c *Chess) Clone() *Chess
 - `LoadPosition(fen string) error`: Sets up the board according to the provided FEN string.
 
 - `Clone() *Chess`: Returns a copy of the chess game.
+
+- `PGN(tags PGNTags) (string, error)`: Generates a PGN string from the current game's move history and the provided tags (event, site, date, white/black player names, result).
+
+- `ParsePGN(pgn string) (PGNTags, []string, error)`: Parses a PGN string and returns the tag pairs and move list in UCI format.
 
 ## Creating a Chess Game
 
