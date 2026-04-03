@@ -248,6 +248,15 @@ func (c *Chess) IsStalemate() bool {
 	return c.stalemate
 }
 
+// IsFiftyMoveRule returns true if the fifty-move rule draw condition is met.
+//
+// The fifty-move rule states that a player can claim a draw if no capture
+// has been made and no pawn has been moved in the last fifty moves
+// (100 half-moves).
+func (c *Chess) IsFiftyMoveRule() bool {
+	return c.halfMoves >= 100
+}
+
 // Square returns the piece in a square.
 // The square is represented by an algebraic notation.
 //
