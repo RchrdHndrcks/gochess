@@ -204,7 +204,7 @@ func (c *Chess) FEN() string {
 // It always returns a non nil slice. It could be empty if the position is
 // checkmate or stalemate.
 func (c *Chess) AvailableMoves() []string {
-	return c.moves
+	return slices.Clone(c.moves)
 }
 
 // MakeMove checks if the move is legal and makes it.

@@ -269,8 +269,9 @@ func (c *Chess) updateCastlePossibilities() {
 
 // updateHalfMoves updates the half moves counter.
 //
-// It must be called after a move is made. If no move was made,
-// the function will panic.
+// It must be called after a move is made. If no move was made
+// (i.e. the history is empty), the function returns early without
+// modifying the counter.
 func (c *Chess) updateHalfMoves() {
 	if len(c.history) == 0 {
 		return
