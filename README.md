@@ -91,6 +91,17 @@ SetSquare(c Coordinate, p int8) error
 Clone() *Board
 ```
 
+### Piece Helper Functions
+
+The root package exposes two helper functions for working with the `Piece` type:
+
+```go
+func PieceType(piece Piece) Piece
+func PieceColor(piece Piece) Piece
+```
+
+`PieceType` returns the piece type by stripping the color bits (masks out the upper color bits, leaving only the type). `PieceColor` returns the piece color by stripping the type bits (masks out the lower type bits, leaving only the color).
+
 ### Coordinates
 
 The `Coordinate` struct represents a position on the board with X and Y values. The package provides utility functions to work with coordinates, including conversion between different notation systems.
