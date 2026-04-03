@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestToPGN(t *testing.T) {
+func TestPGN(t *testing.T) {
 	t.Run("Empty game with default tags", func(t *testing.T) {
 		c, err := chess.New()
 		require.NoError(t, err)
 
-		pgn := c.ToPGN(chess.PGNTags{})
+		pgn := c.PGN(chess.PGNTags{})
 
 		assert.Contains(t, pgn, `[Event "?"]`)
 		assert.Contains(t, pgn, `[Site "?"]`)
@@ -23,7 +23,10 @@ func TestToPGN(t *testing.T) {
 		assert.Contains(t, pgn, `[White "?"]`)
 		assert.Contains(t, pgn, `[Black "?"]`)
 		assert.Contains(t, pgn, `[Result "*"]`)
-		assert.True(t, strings.HasSuffix(strings.TrimSpace(pgn), "*"))
+		parsedTags, parsedMoves, parseErr := chess.ParsePGN(pgn)
+		require.NoError(t, parseErr)
+		assert.Equal(t, chess.ResultOngoing, parsedTags.Result)
+		assert.Empty(t, parsedMoves)
 	})
 
 	t.Run("Empty game with custom tags", func(t *testing.T) {
@@ -38,7 +41,7 @@ func TestToPGN(t *testing.T) {
 			White: "Player1",
 			Black: "Player2",
 		}
-		pgn := c.ToPGN(tags)
+		pgn := c.PGN(tags)
 
 		assert.Contains(t, pgn, `[Event "Test Tournament"]`)
 		assert.Contains(t, pgn, `[Site "Internet"]`)
@@ -60,21 +63,19 @@ func TestToPGN(t *testing.T) {
 
 		require.True(t, c.IsCheckmate())
 
-		pgn := c.ToPGN(chess.PGNTags{})
+		pgn := c.PGN(chess.PGNTags{})
 
-		assert.Contains(t, pgn, `[Result "1-0"]`)
-		assert.Contains(t, pgn, "1. e2e4 e7e5")
-		assert.Contains(t, pgn, "2. f1c4 b8c6")
-		assert.Contains(t, pgn, "3. d1h5 g8f6")
-		assert.Contains(t, pgn, "4. h5f7")
-		assert.True(t, strings.HasSuffix(strings.TrimSpace(pgn), "1-0"))
+		parsedTags, parsedMoves, parseErr := chess.ParsePGN(pgn)
+		require.NoError(t, parseErr)
+		assert.Equal(t, chess.ResultWhiteWins, parsedTags.Result)
+		assert.Equal(t, []string{"e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7"}, parsedMoves)
 	})
 
 	t.Run("Line wrapping", func(t *testing.T) {
 		c, err := chess.New()
 		require.NoError(t, err)
 
-		pgn := c.ToPGN(chess.PGNTags{})
+		pgn := c.PGN(chess.PGNTags{})
 
 		for _, line := range strings.Split(pgn, "\n") {
 			assert.LessOrEqual(t, len(line), 80, "line exceeds 80 characters: %s", line)
@@ -89,7 +90,7 @@ func TestToPGN(t *testing.T) {
 			Event: "He said \"hello\"",
 			Site:  "path\\to\\file",
 		}
-		pgn := c.ToPGN(tags)
+		pgn := c.PGN(tags)
 
 		assert.Contains(t, pgn, "[Event \"He said \\\"hello\\\"\"]")
 		assert.Contains(t, pgn, "[Site \"path\\\\to\\\\file\"]")
@@ -194,7 +195,7 @@ func TestPGNRoundtrip(t *testing.T) {
 			White: "W",
 			Black: "B",
 		}
-		pgn := c.ToPGN(tags)
+		pgn := c.PGN(tags)
 
 		parsedTags, parsedMoves, err := chess.ParsePGN(pgn)
 		require.NoError(t, err)

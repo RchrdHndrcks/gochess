@@ -7,6 +7,14 @@ import (
 	"github.com/RchrdHndrcks/gochess"
 )
 
+// PGN result constants per the PGN specification.
+const (
+	ResultWhiteWins = "1-0"
+	ResultBlackWins = "0-1"
+	ResultDraw      = "1/2-1/2"
+	ResultOngoing   = "*"
+)
+
 // PGNTags represents the seven required tag pairs in a PGN file.
 type PGNTags struct {
 	Event  string
@@ -18,13 +26,13 @@ type PGNTags struct {
 	Result string
 }
 
-// ToPGN generates a PGN string from the current game state.
+// PGN generates a PGN string from the current game state.
 //
 // It writes the seven required tag pairs and the move text using UCI notation.
 // Empty tag values default to "?". The Result tag is determined automatically
 // if not provided: "1-0" or "0-1" for checkmate, "1/2-1/2" for stalemate,
 // and "*" for an ongoing game.
-func (c *Chess) ToPGN(tags PGNTags) string {
+func (c *Chess) PGN(tags PGNTags) string {
 	var sb strings.Builder
 
 	result := c.determineResult(tags.Result)
@@ -97,16 +105,16 @@ func (c *Chess) determineResult(provided string) string {
 
 	if c.checkmate {
 		if c.turn == gochess.White {
-			return "0-1"
+			return ResultBlackWins
 		}
-		return "1-0"
+		return ResultWhiteWins
 	}
 
 	if c.stalemate {
-		return "1/2-1/2"
+		return ResultDraw
 	}
 
-	return "*"
+	return ResultOngoing
 }
 
 // buildMoveText builds the move text from the game history.
@@ -251,10 +259,10 @@ func parseMoveText(text string) []string {
 
 	tokens := strings.Fields(text)
 	results := map[string]bool{
-		"1-0":     true,
-		"0-1":     true,
-		"1/2-1/2": true,
-		"*":       true,
+		ResultWhiteWins: true,
+		ResultBlackWins: true,
+		ResultDraw:      true,
+		ResultOngoing:   true,
 	}
 
 	for _, token := range tokens {
