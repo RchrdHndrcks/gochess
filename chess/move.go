@@ -41,7 +41,7 @@ func CoordinateToAlgebraic(c gochess.Coordinate) string {
 //
 // If the move is a promotion, it receives the piece to promote to. If it receives more
 // than one piece, it returns the first one.
-func UCI(origin, target gochess.Coordinate, piece ...int8) string {
+func UCI(origin, target gochess.Coordinate, piece ...gochess.Piece) string {
 	p := ""
 	if len(piece) > 0 {
 		pi := piece[0]

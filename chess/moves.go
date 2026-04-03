@@ -10,7 +10,7 @@ import (
 // capacityByPiece is a helper map where the key is the piece and the value is
 // the max moves count for that piece. It is useful to know which capacity asign
 // to the slice where the moves of these pieces are stored.
-var capacityByPiece = map[int8]int{
+var capacityByPiece = map[gochess.Piece]int{
 	gochess.White | gochess.Queen:  27,
 	gochess.Black | gochess.Queen:  27,
 	gochess.White | gochess.Rook:   14,
@@ -160,7 +160,7 @@ func (c *Chess) unmakeMove() {
 // The function returns a slice of UCI moves.
 // (e.g. "e2e4" for moving the piece at e2 to e4.)
 // Disclaimer: This function does not check if the move is legal for a Chess game.
-func (c Chess) movesForPiece(piece int8, origin gochess.Coordinate) []string {
+func (c Chess) movesForPiece(piece gochess.Piece, origin gochess.Coordinate) []string {
 	switch piece &^ (gochess.White | gochess.Black) {
 	case gochess.Pawn:
 		return c.pawnMoves(origin)
@@ -258,7 +258,7 @@ func (c Chess) pawnCaptureMoves(origin gochess.Coordinate, isPromotion bool) []s
 // the value of the piece to be promoted.
 func (c Chess) promotionPossibilities(origin, target gochess.Coordinate) []string {
 	moves := make([]string, 4)
-	for i, p := range []int8{gochess.Queen, gochess.Rook, gochess.Bishop, gochess.Knight} {
+	for i, p := range []gochess.Piece{gochess.Queen, gochess.Rook, gochess.Bishop, gochess.Knight} {
 		moves[i] = UCI(origin, target, p)
 	}
 

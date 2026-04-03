@@ -35,9 +35,9 @@ func (c *Chess) loadPosition(FEN string) error {
 	var whiteKing, blackKing int
 	var whiteKingPosition, blackKingPosition *gochess.Coordinate
 
-	brd := make([][]int8, 8)
+	brd := make([][]gochess.Piece, 8)
 	for y := range 8 {
-		row := make([]int8, 8)
+		row := make([]gochess.Piece, 8)
 
 		if len(fenRows[y]) == 0 || len(fenRows[y]) > 8 {
 			return fmt.Errorf("invalid FEN: %s", FEN)
@@ -416,7 +416,7 @@ func (c Chess) isCheck() bool {
 }
 
 // kingsPosition returns the position of the king of the given color.
-func (c Chess) kingsPosition(color int8) gochess.Coordinate {
+func (c Chess) kingsPosition(color gochess.Piece) gochess.Coordinate {
 	if color == gochess.White {
 		return *c.whiteKingPosition
 	}
@@ -429,7 +429,7 @@ func (c Chess) kingsPosition(color int8) gochess.Coordinate {
 //
 // It must be called with a valid coordinate and a valid FEN string.
 // If there is no piece at the given coordinate, it returns gochess.Empty.
-func pieceFromFEN(fen string, coord gochess.Coordinate) int8 {
+func pieceFromFEN(fen string, coord gochess.Coordinate) gochess.Piece {
 	fenRow := strings.Split(strings.Split(fen, " ")[0], "/")[coord.Y]
 	var count int
 	for _, c := range fenRow {

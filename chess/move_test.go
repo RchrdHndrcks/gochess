@@ -13,7 +13,7 @@ func TestUCI(t *testing.T) {
 	t.Run("a1 to a2", func(t *testing.T) {
 		oCor := gochess.Coor(0, 7)
 		tCor := gochess.Coor(0, 6)
-		var promotionPiece int8
+		var promotionPiece gochess.Piece
 		expected := "a1a2"
 
 		got := chess.UCI(oCor, tCor, promotionPiece)
@@ -24,7 +24,7 @@ func TestUCI(t *testing.T) {
 	t.Run("a1 to b2", func(t *testing.T) {
 		oCor := gochess.Coor(0, 7)
 		tCor := gochess.Coor(1, 6)
-		var promotionPiece int8
+		var promotionPiece gochess.Piece
 		expected := "a1b2"
 
 		got := chess.UCI(oCor, tCor, promotionPiece)
@@ -35,7 +35,7 @@ func TestUCI(t *testing.T) {
 	t.Run("a1 to b1", func(t *testing.T) {
 		oCor := gochess.Coor(0, 7)
 		tCor := gochess.Coor(1, 7)
-		var promotionPiece int8
+		var promotionPiece gochess.Piece
 		expected := "a1b1"
 
 		got := chess.UCI(oCor, tCor, promotionPiece)
@@ -46,7 +46,7 @@ func TestUCI(t *testing.T) {
 	t.Run("a1 to b3", func(t *testing.T) {
 		oCor := gochess.Coor(0, 7)
 		tCor := gochess.Coor(1, 5)
-		var promotionPiece int8
+		var promotionPiece gochess.Piece
 		expected := "a1b3"
 
 		got := chess.UCI(oCor, tCor, promotionPiece)
@@ -57,7 +57,7 @@ func TestUCI(t *testing.T) {
 	t.Run("a1 to h8", func(t *testing.T) {
 		oCor := gochess.Coor(0, 7)
 		tCor := gochess.Coor(7, 0)
-		var promotionPiece int8
+		var promotionPiece gochess.Piece
 		expected := "a1h8"
 
 		got := chess.UCI(oCor, tCor, promotionPiece)
