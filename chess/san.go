@@ -35,7 +35,7 @@ func (c *Chess) SAN(uciMove string) (string, error) {
 	// Use FEN to get piece info, as the board may be temporarily modified
 	// by legal move calculations in sequential mode.
 	piece := pieceFromFEN(c.FEN(), origin)
-	pieceType := piece &^ (gochess.White | gochess.Black)
+	pieceType := gochess.PieceType(piece)
 
 	var san string
 
@@ -124,8 +124,8 @@ func pawnSAN(origin, target gochess.Coordinate, isCapture bool, uciMove string) 
 }
 
 // disambiguation returns the disambiguation string needed for a piece move.
-func disambiguation(c *Chess, piece int8, origin, target gochess.Coordinate) string {
-	pieceType := piece &^ (gochess.White | gochess.Black)
+func disambiguation(c *Chess, piece gochess.Piece, origin, target gochess.Coordinate) string {
+	pieceType := gochess.PieceType(piece)
 	targetAlg := CoordinateToAlgebraic(target)
 	fen := c.FEN()
 
@@ -148,7 +148,7 @@ func disambiguation(c *Chess, piece int8, origin, target gochess.Coordinate) str
 		}
 
 		mPiece := pieceFromFEN(fen, mOrigin)
-		mPieceType := mPiece &^ (gochess.White | gochess.Black)
+		mPieceType := gochess.PieceType(mPiece)
 		if mPieceType != pieceType {
 			continue
 		}
@@ -222,7 +222,7 @@ func parsePieceMoveSAN(c *Chess, san string) (string, error) {
 	if !ok || p == gochess.Empty {
 		return "", fmt.Errorf("invalid piece in SAN: %c", pieceChar)
 	}
-	pieceType := p &^ (gochess.White | gochess.Black)
+	pieceType := gochess.PieceType(p)
 
 	rest := san[1:]
 	rest = strings.ReplaceAll(rest, "x", "")
@@ -253,7 +253,7 @@ func parsePieceMoveSAN(c *Chess, san string) (string, error) {
 
 		mOrigin, _ := AlgebraicToCoordinate(m[:2])
 		mPiece := pieceFromFEN(fen, mOrigin)
-		mPieceType := mPiece &^ (gochess.White | gochess.Black)
+		mPieceType := gochess.PieceType(mPiece)
 
 		if mPieceType != pieceType {
 			continue
@@ -312,7 +312,7 @@ func parsePawnMoveSAN(c *Chess, san string) (string, error) {
 
 		mOrigin, _ := AlgebraicToCoordinate(m[:2])
 		mPiece := pieceFromFEN(fen, mOrigin)
-		mPieceType := mPiece &^ (gochess.White | gochess.Black)
+		mPieceType := gochess.PieceType(mPiece)
 
 		if mPieceType != gochess.Pawn {
 			continue
