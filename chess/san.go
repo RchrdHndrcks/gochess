@@ -8,34 +8,16 @@ import (
 	"github.com/RchrdHndrcks/gochess"
 )
 
-// pieceToSAN maps piece types (without color) to their SAN letter.
-var pieceToSAN = map[int8]string{
-	gochess.King:   "K",
-	gochess.Queen:  "Q",
-	gochess.Rook:   "R",
-	gochess.Bishop: "B",
-	gochess.Knight: "N",
-}
-
-// sanToPiece maps SAN piece letters to piece types (without color).
-var sanToPiece = map[byte]int8{
-	'K': gochess.King,
-	'Q': gochess.Queen,
-	'R': gochess.Rook,
-	'B': gochess.Bishop,
-	'N': gochess.Knight,
-}
-
-// ToSAN converts a UCI move (like "e2e4") to Standard Algebraic Notation (like "e4").
+// SAN converts a UCI move (like "e2e4") to Standard Algebraic Notation (like "e4").
 //
-// The function requires the current Chess state to determine disambiguation,
-// captures, check, and checkmate. The UCI move must be present in AvailableMoves().
-func ToSAN(c *Chess, uciMove string) (string, error) {
+// The move must be present in AvailableMoves(). Disambiguation, captures, check
+// and checkmate suffixes are determined automatically from the current position.
+func (c *Chess) SAN(uciMove string) (string, error) {
 	if len(uciMove) < 4 || len(uciMove) > 5 {
 		return "", fmt.Errorf("invalid UCI move: %s", uciMove)
 	}
 
-	// Check that the move is legal.
+	// Verify the move is legal.
 	found := false
 	for _, m := range c.AvailableMoves() {
 		if m == uciMove {
@@ -57,7 +39,7 @@ func ToSAN(c *Chess, uciMove string) (string, error) {
 
 	var san string
 
-	// Handle castling. Check using piece type and known castle moves.
+	// Handle castling.
 	isCastle := pieceType == gochess.King && castlesMoves[uciMove] == c.turn
 	if isCastle {
 		if target.X > origin.X {
@@ -68,12 +50,11 @@ func ToSAN(c *Chess, uciMove string) (string, error) {
 		return san + checkSuffix(c, uciMove), nil
 	}
 
-	// Determine capture by checking the FEN rather than the board directly,
-	// as the board may be temporarily modified by legal move calculations.
+	// Determine capture.
 	targetPiece := pieceFromFEN(c.FEN(), target)
 	isCapture := targetPiece != gochess.Empty
 
-	// En passant is also a capture: pawn moves diagonally to en passant square.
+	// En passant is also a capture.
 	if pieceType == gochess.Pawn && c.enPassantSquare != "" && uciMove[2:4] == c.enPassantSquare {
 		isCapture = true
 	}
@@ -81,8 +62,8 @@ func ToSAN(c *Chess, uciMove string) (string, error) {
 	if pieceType == gochess.Pawn {
 		san = pawnSAN(origin, target, isCapture, uciMove)
 	} else {
-		// Piece letter.
-		san = pieceToSAN[pieceType]
+		// Piece letter — reuse gochess.PieceNames (uppercase = white-colored pieces).
+		san = gochess.PieceNames[pieceType|gochess.White]
 
 		// Disambiguation.
 		san += disambiguation(c, piece, origin, target)
@@ -95,6 +76,31 @@ func ToSAN(c *Chess, uciMove string) (string, error) {
 	}
 
 	return san + checkSuffix(c, uciMove), nil
+}
+
+// FromSAN converts a SAN string (like "Nf3") to a UCI move (like "g1f3").
+//
+// The SAN must correspond to a legal move in the current position.
+func (c *Chess) FromSAN(san string) (string, error) {
+	san = strings.TrimRight(san, "+#")
+
+	// Handle castling.
+	if san == "O-O" || san == "0-0" {
+		return findCastleMove(c, true)
+	}
+	if san == "O-O-O" || san == "0-0-0" {
+		return findCastleMove(c, false)
+	}
+
+	if len(san) == 0 {
+		return "", fmt.Errorf("invalid SAN: empty string")
+	}
+
+	if unicode.IsUpper(rune(san[0])) && san[0] != 'O' {
+		return parsePieceMoveSAN(c, san)
+	}
+
+	return parsePawnMoveSAN(c, san)
 }
 
 // pawnSAN builds the SAN string for a pawn move.
@@ -118,9 +124,6 @@ func pawnSAN(origin, target gochess.Coordinate, isCapture bool, uciMove string) 
 }
 
 // disambiguation returns the disambiguation string needed for a piece move.
-//
-// It checks all legal moves to see if another piece of the same type can
-// reach the same target square. If so, it adds file, rank, or both.
 func disambiguation(c *Chess, piece int8, origin, target gochess.Coordinate) string {
 	pieceType := piece &^ (gochess.White | gochess.Black)
 	targetAlg := CoordinateToAlgebraic(target)
@@ -135,19 +138,15 @@ func disambiguation(c *Chess, piece int8, origin, target gochess.Coordinate) str
 			continue
 		}
 
-		// Skip this move itself.
 		mOrigin, _ := AlgebraicToCoordinate(m[:2])
 		if mOrigin == origin {
 			continue
 		}
 
-		// Check if this move targets the same square.
 		if m[2:4] != targetAlg {
 			continue
 		}
 
-		// Check if the piece at origin is the same type.
-		// Use FEN to avoid board corruption issues.
 		mPiece := pieceFromFEN(fen, mOrigin)
 		mPieceType := mPiece &^ (gochess.White | gochess.Black)
 		if mPieceType != pieceType {
@@ -172,21 +171,15 @@ func disambiguation(c *Chess, piece int8, origin, target gochess.Coordinate) str
 	}
 
 	if sameFile {
-		// Use rank for disambiguation.
 		return fmt.Sprintf("%d", 8-origin.Y)
 	}
 
-	// Use file for disambiguation (default).
 	return string(rune('a' + origin.X))
 }
 
-// checkSuffix determines if a move results in check or checkmate by temporarily
-// making the move and checking the resulting position state.
+// checkSuffix determines if a move results in check or checkmate.
 func checkSuffix(c *Chess, uciMove string) string {
-	// Clone the chess to avoid modifying the original.
 	cloned := c.clone()
-
-	// Make the move on the clone.
 	_ = cloned.MakeMove(uciMove)
 
 	if cloned.IsCheckmate() {
@@ -198,33 +191,6 @@ func checkSuffix(c *Chess, uciMove string) string {
 	}
 
 	return ""
-}
-
-// FromSAN converts a SAN string (like "Nf3") to a UCI move (like "g1f3").
-//
-// The function requires the current Chess state to find the matching move
-// among AvailableMoves().
-func FromSAN(c *Chess, san string) (string, error) {
-	san = strings.TrimRight(san, "+#")
-
-	// Handle castling.
-	if san == "O-O" || san == "0-0" {
-		return findCastleMove(c, true)
-	}
-	if san == "O-O-O" || san == "0-0-0" {
-		return findCastleMove(c, false)
-	}
-
-	// Determine if it's a piece move or pawn move.
-	if len(san) == 0 {
-		return "", fmt.Errorf("invalid SAN: empty string")
-	}
-
-	if unicode.IsUpper(rune(san[0])) && san[0] != 'O' {
-		return parsePieceMoveSAN(c, san)
-	}
-
-	return parsePawnMoveSAN(c, san)
 }
 
 // findCastleMove finds the castling UCI move from available moves.
@@ -251,25 +217,23 @@ func findCastleMove(c *Chess, kingside bool) (string, error) {
 // parsePieceMoveSAN parses SAN for non-pawn pieces (e.g., "Nf3", "Raxe1", "R1e1").
 func parsePieceMoveSAN(c *Chess, san string) (string, error) {
 	pieceChar := san[0]
-	pieceType, ok := sanToPiece[pieceChar]
-	if !ok {
+	// Reuse gochess.Pieces; strip color to get bare piece type.
+	p, ok := gochess.Pieces[string(pieceChar)]
+	if !ok || p == gochess.Empty {
 		return "", fmt.Errorf("invalid piece in SAN: %c", pieceChar)
 	}
+	pieceType := p &^ (gochess.White | gochess.Black)
 
 	rest := san[1:]
-
-	// Remove capture indicator.
 	rest = strings.ReplaceAll(rest, "x", "")
 
 	if len(rest) < 2 {
 		return "", fmt.Errorf("invalid SAN: %s", san)
 	}
 
-	// The last two characters are always the target square.
 	targetAlg := rest[len(rest)-2:]
 	disambig := rest[:len(rest)-2]
 
-	// Parse disambiguation.
 	var fileDisambig int = -1
 	var rankDisambig int = -1
 
@@ -281,7 +245,6 @@ func parsePieceMoveSAN(c *Chess, san string) (string, error) {
 		}
 	}
 
-	// Find matching move.
 	fen := c.FEN()
 	for _, m := range c.AvailableMoves() {
 		if m[2:4] != targetAlg {
@@ -314,9 +277,13 @@ func parsePieceMoveSAN(c *Chess, san string) (string, error) {
 func parsePawnMoveSAN(c *Chess, san string) (string, error) {
 	var fileDisambig int = -1
 	var promotion string
+	isCaptureSAN := false
 
 	// Check for promotion.
 	if idx := strings.Index(san, "="); idx >= 0 {
+		if idx+1 >= len(san) {
+			return "", fmt.Errorf("invalid SAN: promotion piece missing after '=': %s", san)
+		}
 		promotion = strings.ToLower(san[idx+1 : idx+2])
 		san = san[:idx]
 	}
@@ -324,10 +291,12 @@ func parsePawnMoveSAN(c *Chess, san string) (string, error) {
 	// Remove capture indicator.
 	parts := strings.Split(san, "x")
 	if len(parts) == 2 {
+		if len(parts[0]) == 0 {
+			return "", fmt.Errorf("invalid capture SAN: missing file before 'x': %s", san)
+		}
 		fileDisambig = int(parts[0][0] - 'a')
+		isCaptureSAN = true
 		san = parts[1]
-	} else if len(parts[0]) == 1 && parts[0][0] >= 'a' && parts[0][0] <= 'h' {
-		// Could be just a destination like "e4", but we handle below.
 	}
 
 	targetAlg := san
@@ -353,6 +322,12 @@ func parsePawnMoveSAN(c *Chess, san string) (string, error) {
 			continue
 		}
 
+		// A non-capture SAN (no 'x') must not match diagonal moves (captures/en passant).
+		mTarget, _ := AlgebraicToCoordinate(m[2:4])
+		if !isCaptureSAN && mOrigin.X != mTarget.X {
+			continue
+		}
+
 		// Check promotion match.
 		if promotion != "" {
 			if len(m) != 5 || m[4:5] != promotion {
@@ -366,18 +341,4 @@ func parsePawnMoveSAN(c *Chess, san string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no matching move found for pawn SAN: %s", targetAlg)
-}
-
-// MoveToSAN converts a UCI move string to Standard Algebraic Notation.
-//
-// The move must be present in AvailableMoves().
-func (c *Chess) MoveToSAN(move string) (string, error) {
-	return ToSAN(c, move)
-}
-
-// MoveFromSAN converts a SAN string to a UCI move string.
-//
-// The SAN must correspond to a legal move in the current position.
-func (c *Chess) MoveFromSAN(san string) (string, error) {
-	return FromSAN(c, san)
 }
