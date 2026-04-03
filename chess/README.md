@@ -37,6 +37,7 @@ func (c *Chess) UnmakeMove()
 func (c *Chess) IsCheck() bool
 func (c *Chess) IsCheckmate() bool
 func (c *Chess) IsStalemate() bool
+func (c *Chess) IsFiftyMoveRule() bool
 func (c *Chess) LoadPosition(fen string) error
 func (c *Chess) Clone() *Chess
 ```
@@ -60,6 +61,8 @@ func (c *Chess) Clone() *Chess
 - `IsCheckmate() bool`: Returns whether the current player's king is in checkmate.
 
 - `IsStalemate() bool`: Returns whether the game is in stalemate.
+
+- `IsFiftyMoveRule() bool`: Returns whether the fifty-move rule draw condition is met (i.e., 50 or more moves have been made by each side without a pawn move or capture).
 
 - `LoadPosition(fen string) error`: Sets up the board according to the provided FEN string.
 
