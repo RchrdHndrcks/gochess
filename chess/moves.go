@@ -545,9 +545,13 @@ func (c Chess) isLegalMove(move string) bool {
 		return false
 	}
 
-	// If the move is a castle and the king way is under attack, the move is not legal.
-	if c.isCastleMove(move) && destinationMatch(availableMoves, castleKingWay[move]) {
-		return false
+	// If the move is a castle and the king's starting square or passage square is under
+	// attack, the move is not legal (FIDE rules: cannot castle while in check or through check).
+	if c.isCastleMove(move) {
+		origin, _ := AlgebraicToCoordinate(move[:2])
+		if destinationMatch(availableMoves, origin) || destinationMatch(availableMoves, castleKingWay[move]) {
+			return false
+		}
 	}
 
 	return true

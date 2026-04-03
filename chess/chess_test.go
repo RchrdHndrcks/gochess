@@ -229,6 +229,23 @@ func TestAvailableMoves(t *testing.T) {
 		assert.ElementsMatch(t, expectedMoves, moves)
 	})
 
+	t.Run("Cannot Castle While In Check", func(t *testing.T) {
+		// Black king on e8, black rook on h8 (kingside castling rights),
+		// white rook on e1 giving check on the e-file, white king on f1.
+		// FIDE rule: castling is illegal while in check.
+		// Arrange
+		c, errOpts := chess.New(chess.WithFEN("4k2r/8/8/8/8/8/8/4RK2 b k - 0 1"))
+		require.Nil(t, errOpts)
+
+		// Act
+		moves := c.AvailableMoves()
+
+		// Assert: e8g8 (kingside castle) must NOT appear; only safe king escapes.
+		assert.NotContains(t, moves, "e8g8")
+		expectedMoves := []string{"e8d8", "e8d7", "e8f8", "e8f7"}
+		assert.ElementsMatch(t, expectedMoves, moves)
+	})
+
 	t.Run("King Is In Check", func(t *testing.T) {
 		// Arrange
 		c, errOpts := chess.New(chess.WithFEN("k7/8/8/8/8/8/3q4/3K4 w - - 0 1"))
