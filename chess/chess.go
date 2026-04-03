@@ -258,12 +258,21 @@ func (c *Chess) IsFiftyMoveRule() bool {
 }
 
 // IsInsufficientMaterial returns true if neither side has sufficient material
-// to checkmate the opponent. The following positions are considered
-// insufficient material:
-//   - King vs King
-//   - King + Knight vs King
-//   - King + Bishop vs King
-//   - King + Bishop vs King + Bishop (bishops on same color squares)
+// to checkmate the opponent, as defined by FIDE Laws of Chess article 5.2.2.
+//
+// The following positions are considered insufficient material:
+//   - King vs King: bare kings cannot deliver checkmate by any legal sequence.
+//   - King + Knight vs King: a lone knight cannot force checkmate without the
+//     opponent's cooperation.
+//   - King + Bishop vs King: a bishop controls only one square color, so the
+//     defending king can always evade.
+//   - King + Bishop vs King + Bishop (same color squares): the attacking bishop
+//     can never reach the squares the defending bishop occupies, so no forced
+//     mate exists. Opposite-color bishops are NOT insufficient — they can
+//     cooperate to deliver checkmate.
+//
+// Any other material (pawn, rook, queen, two or more knights, or mixed minor
+// pieces not listed above) is considered sufficient.
 func (c *Chess) IsInsufficientMaterial() bool {
 	width := c.board.Width()
 
@@ -279,7 +288,7 @@ func (c *Chess) IsInsufficientMaterial() bool {
 				continue
 			}
 
-			pieceType := piece & 0b00111
+			pieceType := piece &^ (gochess.White | gochess.Black)
 			switch pieceType {
 			case gochess.King:
 				// Kings are always present, skip them.
