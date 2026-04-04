@@ -32,10 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [#29](https://github.com/RchrdHndrcks/gochess/pull/29) Map lookups in the board adapter are validated; invalid keys return an error instead of a silent zero value.
+- [#29](https://github.com/RchrdHndrcks/gochess/pull/29) FEN parsing now validates `gochess.Pieces` map lookups; unknown piece characters return an error instead of a silent zero value.
 - [#36](https://github.com/RchrdHndrcks/gochess/pull/36) Renamed `move.go` to `notation.go` for clarity.
 
-### Documentation
+### Documentation / Tests
 
 - [#30](https://github.com/RchrdHndrcks/gochess/pull/30) Documented that `Chess` is not safe for concurrent use.
 - [#34](https://github.com/RchrdHndrcks/gochess/pull/34) Added negative and edge-case tests for `MakeMove` and `UnmakeMove`.
