@@ -571,6 +571,83 @@ func (b *errorBoard) SetSquare(_ gochess.Coordinate, _ gochess.Piece) error { re
 func (b *errorBoard) Square(_ gochess.Coordinate) (gochess.Piece, error)    { return 0, b.squareErr }
 func (b *errorBoard) Width() int                                             { return 8 }
 
+func TestIsInsufficientMaterial(t *testing.T) {
+	tests := []struct {
+		name string
+		fen  string
+		want bool
+	}{
+		{
+			name: "Default position",
+			fen:  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			want: false,
+		},
+		{
+			name: "King vs King",
+			fen:  "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+			want: true,
+		},
+		{
+			name: "King + Knight vs King",
+			fen:  "4k3/8/8/8/8/8/8/4K1N1 w - - 0 1",
+			want: true,
+		},
+		{
+			name: "King + Bishop vs King",
+			fen:  "4k3/8/8/8/8/8/8/4K1B1 w - - 0 1",
+			want: true,
+		},
+		{
+			name: "King + Bishop vs King + Bishop same color squares",
+			fen:  "4kb2/8/8/8/8/8/8/4K1B1 w - - 0 1",
+			want: true,
+		},
+		{
+			name: "King + Bishop vs King + Bishop different color squares",
+			fen:  "4k1b1/8/8/8/8/8/8/4K1B1 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Rook vs King",
+			fen:  "4k3/8/8/8/8/8/8/4K2R w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Queen vs King",
+			fen:  "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Pawn vs King",
+			fen:  "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Two Knights vs King is sufficient",
+			fen:  "4k3/8/8/8/8/8/8/4KNN1 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Knight vs King + Knight is sufficient",
+			fen:  "4k1n1/8/8/8/8/8/8/4K1N1 w - - 0 1",
+			want: false,
+		},
+		{
+			name: "King + Bishop vs King + Knight is sufficient",
+			fen:  "4k1n1/8/8/8/8/8/8/4K1B1 w - - 0 1",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := chess.New(chess.WithFEN(tt.fen))
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, c.IsInsufficientMaterial())
+		})
+	}
+}
+
 func TestMakeMove_ScholarMate(t *testing.T) {
 	// Arrange
 	c, err := chess.New()

@@ -38,6 +38,7 @@ func (c *Chess) IsCheck() bool
 func (c *Chess) IsCheckmate() bool
 func (c *Chess) IsStalemate() bool
 func (c *Chess) IsFiftyMoveRule() bool
+func (c *Chess) IsInsufficientMaterial() bool
 func (c *Chess) LoadPosition(fen string) error
 func (c *Chess) Clone() *Chess
 ```
@@ -63,6 +64,8 @@ func (c *Chess) Clone() *Chess
 - `IsStalemate() bool`: Returns whether the game is in stalemate.
 
 - `IsFiftyMoveRule() bool`: Returns whether the fifty-move rule draw condition is met (i.e., 50 or more moves have been made by each side without a pawn move or capture).
+
+- `IsInsufficientMaterial() bool`: Returns whether neither side has sufficient material to deliver checkmate (K vs K, K+N vs K, K+B vs K, K+B vs K+B same color squares). Based on FIDE Laws of Chess article 5.2.2.
 
 - `LoadPosition(fen string) error`: Sets up the board according to the provided FEN string.
 

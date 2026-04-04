@@ -257,6 +257,79 @@ func (c *Chess) IsFiftyMoveRule() bool {
 	return c.halfMoves >= 100
 }
 
+// IsInsufficientMaterial returns true if neither side has sufficient material
+// to checkmate the opponent, as defined by FIDE Laws of Chess article 5.2.2.
+//
+// The following positions are considered insufficient material:
+//   - King vs King: bare kings cannot deliver checkmate by any legal sequence.
+//   - King + Knight vs King: a lone knight cannot force checkmate without the
+//     opponent's cooperation.
+//   - King + Bishop vs King: a bishop controls only one square color, so the
+//     defending king can always evade.
+//   - King + Bishop vs King + Bishop (same color squares): the attacking bishop
+//     can never reach the squares the defending bishop occupies, so no forced
+//     mate exists. Opposite-color bishops are NOT insufficient — they can
+//     cooperate to deliver checkmate.
+//
+// Any other material (pawn, rook, queen, two or more knights, or mixed minor
+// pieces not listed above) is considered sufficient.
+func (c *Chess) IsInsufficientMaterial() bool {
+	width := c.board.Width()
+
+	var knights, bishops int
+	var bishopSquareColor int // stores (x+y)%2 of the first bishop found
+	bishopSquareColor = -1
+	allBishopsSameColor := true
+
+	for y := range width {
+		for x := range width {
+			piece, _ := c.board.Square(gochess.Coor(x, y))
+			if piece == gochess.Empty {
+				continue
+			}
+
+			pieceType := gochess.PieceType(piece)
+			switch pieceType {
+			case gochess.King:
+				// Kings are always present, skip them.
+				continue
+			case gochess.Knight:
+				knights++
+			case gochess.Bishop:
+				bishops++
+				sc := (x + y) % 2
+				if bishopSquareColor == -1 {
+					bishopSquareColor = sc
+				} else if sc != bishopSquareColor {
+					allBishopsSameColor = false
+				}
+			default:
+				// Any other piece (pawn, rook, queen) means sufficient material.
+				return false
+			}
+		}
+	}
+
+	totalMinor := knights + bishops
+
+	// King vs King
+	if totalMinor == 0 {
+		return true
+	}
+
+	// King + single minor piece vs King
+	if totalMinor == 1 {
+		return true
+	}
+
+	// King + Bishop vs King + Bishop on same color squares
+	if knights == 0 && bishops == 2 && allBishopsSameColor {
+		return true
+	}
+
+	return false
+}
+
 // Square returns the piece in a square.
 // The square is represented by an algebraic notation.
 //
