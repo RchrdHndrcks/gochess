@@ -200,7 +200,16 @@ func (c Chess) pawnMoves(origin gochess.Coordinate) []string {
 	}
 
 	if isPromotion {
-		return append(c.pawnCaptureMoves(origin, true), c.promotionPossibilities(origin, tCor)...)
+		captureMoves := c.pawnCaptureMoves(origin, true)
+		// Only add push-promotion moves if the target square is empty.
+		// Previously this called promotionPossibilities unconditionally, which
+		// generated pseudo-legal captures to the promotion square even when it
+		// was occupied (e.g. by the opponent's king), incorrectly marking that
+		// square as attacked.
+		if s == gochess.Empty {
+			captureMoves = append(captureMoves, c.promotionPossibilities(origin, tCor)...)
+		}
+		return captureMoves
 	}
 
 	if !(dir == 1 && origin.Y == 1) && !(dir == -1 && origin.Y == 6) {
@@ -545,9 +554,18 @@ func (c Chess) isLegalMove(move string) bool {
 		return false
 	}
 
-	// If the move is a castle and the king way is under attack, the move is not legal.
-	if c.isCastleMove(move) && destinationMatch(availableMoves, castleKingWay[move]) {
-		return false
+	// FIDE rule 3.8.2: castling has three restrictions on attacked squares.
+	if c.isCastleMove(move) {
+		// (1) Cannot castle while in check. isCheck() is called on the restored
+		//     pre-castle position, so the king is still on its starting square and
+		//     pawn attacks to that square are generated correctly.
+		if c.isCheck() {
+			return false
+		}
+		// (2) Cannot castle through check (king passage square under attack).
+		if destinationMatch(availableMoves, castleKingWay[move]) {
+			return false
+		}
 	}
 
 	return true
