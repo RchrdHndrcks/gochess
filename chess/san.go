@@ -179,9 +179,12 @@ func disambiguation(c *Chess, piece gochess.Piece, origin, target gochess.Coordi
 
 // checkSuffix determines if a move results in check or checkmate.
 func checkSuffix(c *Chess, uciMove string) string {
-	// Use LoadPosition to make a fresh game at the current FEN, avoiding
-	// any shared board pointer issue with clone().
-	cloned, _ := New(WithFEN(c.actualFEN), WithParallelism(1))
+	// Create a fresh game from the current FEN to avoid any shared board
+	// pointer issue with clone().
+	cloned, err := New(WithFEN(c.actualFEN), WithParallelism(1))
+	if err != nil || cloned == nil {
+		return ""
+	}
 	_ = cloned.MakeMove(uciMove)
 
 	if cloned.IsCheckmate() {
