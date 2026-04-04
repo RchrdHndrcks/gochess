@@ -83,6 +83,22 @@ func TestPGN(t *testing.T) {
 		}
 	})
 
+	t.Run("Newlines in tag values are stripped", func(t *testing.T) {
+		c, err := chess.New()
+		require.NoError(t, err)
+
+		tags := chesspgn.PGNTags{
+			Event: "line1\nline2",
+			Site:  "cr\r\ntest",
+		}
+		pgn := c.PGN(tags)
+
+		// Neither the event nor the site tag line should contain a raw newline
+		// or carriage return inside the quoted value.
+		assert.Contains(t, pgn, `[Event "line1line2"]`)
+		assert.Contains(t, pgn, `[Site "crtest"]`)
+	})
+
 	t.Run("Tag values with special characters", func(t *testing.T) {
 		c, err := chess.New()
 		require.NoError(t, err)

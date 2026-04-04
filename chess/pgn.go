@@ -104,10 +104,13 @@ func wrapLines(text string, maxWidth int) string {
 }
 
 // writeTag writes a PGN tag pair to the builder.
-// It escapes backslashes and double quotes per PGN specification.
+// It escapes backslashes and double quotes per PGN specification, and strips
+// carriage returns and newlines, which are not permitted inside tag values.
 func writeTag(sb *strings.Builder, name, value string) {
 	escaped := strings.ReplaceAll(value, `\`, `\\`)
 	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	escaped = strings.ReplaceAll(escaped, "\r", "")
+	escaped = strings.ReplaceAll(escaped, "\n", "")
 	sb.WriteString(fmt.Sprintf("[%s \"%s\"]\n", name, escaped))
 }
 
