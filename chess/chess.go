@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
+	"strings"
 
 	"github.com/RchrdHndrcks/gochess"
 )
@@ -328,6 +329,44 @@ func (c *Chess) IsInsufficientMaterial() bool {
 	}
 
 	return false
+}
+
+// IsThreefoldRepetition returns true if the current position has occurred
+// at least three times during the game.
+//
+// Two positions are considered the same when piece placement, active color,
+// and castling availability are identical. The en passant field and move
+// counters are excluded: an en passant target square is set for exactly one
+// ply after a double pawn push and the same pawn can never double-push again,
+// so the identical non-"-" en passant square cannot appear in two distinct
+// positions within a single game.
+func (c *Chess) IsThreefoldRepetition() bool {
+	currentKey := positionKey(c.actualFEN)
+	count := 1 // current position counts as one occurrence
+	for _, ctx := range c.history {
+		if positionKey(ctx.fen) == currentKey {
+			count++
+			if count >= 3 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// positionKey extracts the first three fields (piece placement, active color,
+// castling rights) from a FEN string for use in repetition detection.
+//
+// The en passant field is intentionally excluded: a given en passant target
+// square is set for exactly one ply and can never recur within the same game,
+// so including it would only produce false negatives without preventing false
+// positives.
+func positionKey(fen string) string {
+	parts := strings.SplitN(fen, " ", 5)
+	if len(parts) < 3 {
+		return fen
+	}
+	return parts[0] + " " + parts[1] + " " + parts[2]
 }
 
 // Square returns the piece in a square.

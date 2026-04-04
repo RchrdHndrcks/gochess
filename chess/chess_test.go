@@ -921,6 +921,7 @@ func TestLoadPosition_Errors(t *testing.T) {
 
 func TestIsFiftyMoveRule(t *testing.T) {
 	t.Run("Default position is not fifty-move rule", func(t *testing.T) {
+
 		// Arrange
 		c, err := chess.New()
 		require.Nil(t, err)
@@ -957,8 +958,91 @@ func TestIsFiftyMoveRule(t *testing.T) {
 
 		// Assert - counter should be reset, not fifty-move rule
 		assert.False(t, c.IsFiftyMoveRule())
+
 	})
 }
+
+func TestIsThreefoldRepetition(t *testing.T) {
+	t.Run("Default position is not repeated", func(t *testing.T) {
+
+		// Arrange
+		c, err := chess.New()
+		require.Nil(t, err)
+
+		// Assert
+		assert.False(t, c.IsThreefoldRepetition())
+	})
+
+	t.Run("Position repeating 3 times via knight moves", func(t *testing.T) {
+		// Arrange
+		c, err := chess.New()
+		require.Nil(t, err)
+
+		// The starting position FEN position key is:
+		// rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -
+		// We return to this exact position by moving knights back and forth.
+		// After each full cycle (4 half-moves), we're back at the start.
+
+		moves := []string{
+			// Cycle 1: leaves starting position (occurrence 1), returns to it (occurrence 2)
+			"g1f3", "g8f6", "f3g1", "f6g8",
+			// Cycle 2: leaves starting position (occurrence 2), returns to it (occurrence 3)
+			"g1f3", "g8f6", "f3g1", "f6g8",
+		}
+
+		for _, move := range moves {
+			err = c.MakeMove(move)
+			require.Nil(t, err)
+		}
+
+		// Assert - the starting position has now appeared 3 times
+		assert.True(t, c.IsThreefoldRepetition())
+	})
+
+	t.Run("Repetition is detected across a double pawn push", func(t *testing.T) {
+		// A double pawn push sets an en passant target square for exactly one ply.
+		// The same pawn cannot double-push again, so the identical en passant
+		// square can never appear in two positions. Threefold repetition must not
+		// be blocked by the transient en passant field.
+		//
+		// Sequence:
+		//   occurrence 1: starting position (e.p. = -)
+		//   e2e4 → e.p. set to e3, but no black pawn on d4/f4 can capture
+		//   g8f6 → e.p. cleared
+		//   e4e5 (pawn advances), g1f3
+		//   f6g8, f3g1 → same piece layout as occurrence 1 (e.p. = -)   [occurrence 2]
+		//   g1f3, g8f6, f3g1, f6g8                                       [occurrence 3]
+		//
+		// However, to keep the test straightforward we use a FEN where the
+		// position repeats through knight manoeuvres but one cycle passes
+		// through a pawn push that sets e.p. temporarily.
+
+		// Use a closed position where neither side has pawns that can capture
+		// en passant so the e.p. square, when set, is irrelevant.
+		// FEN: only kings + one white pawn on e2, black knight on g8, white knight on g1.
+		fen := "4k3/8/8/8/8/8/4P3/4K1N1 w - - 0 1"
+		c, err := chess.New(chess.WithFEN(fen))
+		require.Nil(t, err)
+
+		// occurrence 1: current position
+		// Push the pawn → sets e.p. to e3, no black pawn can capture
+		require.NoError(t, c.MakeMove("e2e4"))
+		// Move king away and back to return to a position where
+		// piece placement + turn + castling are the same (no castling rights).
+		require.NoError(t, c.MakeMove("e8d8"))
+		require.NoError(t, c.MakeMove("e1d1"))
+		require.NoError(t, c.MakeMove("d8e8"))
+		require.NoError(t, c.MakeMove("d1e1"))
+		// occurrence 2 of: 4k3/8/8/8/4P3/8/8/4K1N1 w - - (kings back, pawn on e4)
+		require.NoError(t, c.MakeMove("e8d8"))
+		require.NoError(t, c.MakeMove("e1d1"))
+		require.NoError(t, c.MakeMove("d8e8"))
+		require.NoError(t, c.MakeMove("d1e1"))
+		// occurrence 3
+		assert.True(t, c.IsThreefoldRepetition())
+	})
+}
+
 
 func TestUnmakeMove(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
