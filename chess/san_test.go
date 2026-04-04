@@ -252,6 +252,33 @@ func TestFromSAN(t *testing.T) {
 		assert.Equal(t, "e4d5", uci)
 	})
 
+	t.Run("NonCapturePawnSANNotMatchedToEnPassant", func(t *testing.T) {
+		// Regression: with an en passant square (c6) available, a non-capture
+		// SAN like "c6" must not resolve to the en passant move d5xc6.
+		// The en passant target square (c6) is empty, so there is no quiet
+		// push to c6 — FromSAN("c6") must return an error, not the e.p. move.
+		// FromSAN("dxc6") must correctly return the en passant move.
+		c, err := New(
+			WithFEN("4k3/8/8/2pP4/8/8/8/4K3 w - c6 0 1"),
+			WithParallelism(1),
+		)
+		require.NoError(t, err)
+
+		// Quiet push to c6 doesn't exist — should be an error, not the e.p. move.
+		_, err = c.FromSAN("c6")
+		assert.Error(t, err, "FromSAN(\"c6\") should fail: no quiet pawn push to c6 exists")
+
+		// Quiet push to d6 must work normally.
+		uci, err := c.FromSAN("d6")
+		require.NoError(t, err)
+		assert.Equal(t, "d5d6", uci)
+
+		// Capture SAN must resolve to the en passant move.
+		uci, err = c.FromSAN("dxc6")
+		require.NoError(t, err)
+		assert.Equal(t, "d5c6", uci)
+	})
+
 	t.Run("Promotion", func(t *testing.T) {
 		c, err := New(
 			WithFEN("8/4P1k1/8/8/8/8/8/K7 w - - 0 1"),
