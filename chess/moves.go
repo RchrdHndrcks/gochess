@@ -4,7 +4,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/RchrdHndrcks/gochess"
+	"github.com/RchrdHndrcks/gochess/v2"
 )
 
 // capacityByPiece is a helper map where the key is the piece and the value is

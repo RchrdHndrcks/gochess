@@ -1,6 +1,6 @@
 package chess
 
-import "github.com/RchrdHndrcks/gochess"
+import "github.com/RchrdHndrcks/gochess/v2"
 
 // boardAdapter is an adapter for gochess.Board that implements the Board interface.
 //

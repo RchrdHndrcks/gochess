@@ -1,4 +1,4 @@
-module github.com/RchrdHndrcks/gochess
+module github.com/RchrdHndrcks/gochess/v2
 
 go 1.24.2
 

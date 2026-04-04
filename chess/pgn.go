@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/RchrdHndrcks/gochess"
-	chesspgn "github.com/RchrdHndrcks/gochess/chess/pgn"
+	"github.com/RchrdHndrcks/gochess/v2"
+	chesspgn "github.com/RchrdHndrcks/gochess/v2/chess/pgn"
 )
 
 // PGN generates a PGN string from the current game state.

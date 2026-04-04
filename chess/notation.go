@@ -3,7 +3,7 @@ package chess
 import (
 	"fmt"
 
-	"github.com/RchrdHndrcks/gochess"
+	"github.com/RchrdHndrcks/gochess/v2"
 )
 
 // AlgebraicToCoordinate returns a new Coordinate from text notation.

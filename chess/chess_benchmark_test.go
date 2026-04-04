@@ -3,7 +3,7 @@ package chess_test
 import (
 	"testing"
 
-	"github.com/RchrdHndrcks/gochess/chess"
+	"github.com/RchrdHndrcks/gochess/v2/chess"
 )
 
 func BenchmarkCapablancaSteiner(b *testing.B) {

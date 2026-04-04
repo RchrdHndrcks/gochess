@@ -3,8 +3,8 @@ package chess_test
 import (
 	"testing"
 
-	"github.com/RchrdHndrcks/gochess"
-	"github.com/RchrdHndrcks/gochess/chess"
+	"github.com/RchrdHndrcks/gochess/v2"
+	"github.com/RchrdHndrcks/gochess/v2/chess"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

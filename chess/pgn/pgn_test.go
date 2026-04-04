@@ -3,7 +3,7 @@ package pgn_test
 import (
 	"testing"
 
-	chesspgn "github.com/RchrdHndrcks/gochess/chess/pgn"
+	chesspgn "github.com/RchrdHndrcks/gochess/v2/chess/pgn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
