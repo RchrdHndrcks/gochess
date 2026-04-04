@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-04-04
+
+### Fixed
+
+- [#45](https://github.com/RchrdHndrcks/gochess/pull/45) `checkSuffix` now handles the error from `New(WithFEN(...))` and returns `""` instead of panicking on a nil game. Aligns the inline comment with what the code actually does. Adds regression test `TestSAN_DoesNotMutateBoard` verifying that calling `SAN()` does not alter the game's board state.
+
 ## [2.0.0] - 2026-04-04
 
 ### Breaking Changes

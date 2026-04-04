@@ -306,3 +306,33 @@ func TestFromSAN(t *testing.T) {
 		}
 	})
 }
+
+// TestSAN_DoesNotMutateBoard verifies that calling SAN does not corrupt the
+// game's board state (regression for the checkSuffix clone() bug, PR #44).
+func TestSAN_DoesNotMutateBoard(t *testing.T) {
+	// Use a position where the move is checkmate so checkSuffix exercises
+	// the New(WithFEN(...)) path and produces a "#" suffix.
+	// Position: white Qf7, Kg6; black Kh8.
+	//   Qg7# — king on h8 is covered by Qg7 (diagonal), g8 covered by Qg7
+	//   (file), h7 covered by Qg7 (rank); Kg6 guards g7 so king can't capture.
+	c, err := New(
+		WithFEN("7k/5Q2/6K1/8/8/8/8/8 w - - 0 1"),
+		WithParallelism(1),
+	)
+	require.NoError(t, err)
+
+	fenBefore := c.FEN()
+
+	san, err := c.SAN("f7g7")
+	require.NoError(t, err)
+	assert.Equal(t, "Qg7#", san)
+
+	// The board must be completely unchanged after calling SAN.
+	fenAfter := c.FEN()
+	assert.Equal(t, fenBefore, fenAfter, "SAN() must not mutate the board state")
+
+	// The move must still be legal (board not corrupted).
+	uci, err := c.FromSAN("Qg7")
+	require.NoError(t, err)
+	assert.Equal(t, "f7g7", uci)
+}
