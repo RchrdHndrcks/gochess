@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/RchrdHndrcks/gochess/chess"
-	chesspgn "github.com/RchrdHndrcks/gochess/chess/pgn"
+	"github.com/RchrdHndrcks/gochess/v2/chess"
+	chesspgn "github.com/RchrdHndrcks/gochess/v2/chess/pgn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

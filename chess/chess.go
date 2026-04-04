@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/RchrdHndrcks/gochess"
+	"github.com/RchrdHndrcks/gochess/v2"
 )
 
 type (

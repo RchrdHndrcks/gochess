@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/RchrdHndrcks/gochess"
+	"github.com/RchrdHndrcks/gochess/v2"
 )
 
 var fenAnalysisRegex = regexp.MustCompile("[/0-9]")

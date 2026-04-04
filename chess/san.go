@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/RchrdHndrcks/gochess"
+	"github.com/RchrdHndrcks/gochess/v2"
 )
 
 // SAN converts a UCI move (like "e2e4") to Standard Algebraic Notation (like "e4").

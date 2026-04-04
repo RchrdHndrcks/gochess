@@ -3,7 +3,7 @@ package chess
 import (
 	"testing"
 
-	"github.com/RchrdHndrcks/gochess"
+	"github.com/RchrdHndrcks/gochess/v2"
 )
 
 func TestWithParallelism(t *testing.T) {
