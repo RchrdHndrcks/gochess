@@ -218,12 +218,12 @@ func (c *Chess) setProperties(FEN string) error {
 
 	castleRights, err := parseCastleRights(props[1])
 	if err != nil {
-		return fmt.Errorf("invalid castles: %s", props[1])
+		return fmt.Errorf("invalid castles %q: %w", props[1], err)
 	}
 
 	enPassantSquare := props[2]
 	if err := c.validateEnPassant(enPassantSquare); err != nil {
-		return fmt.Errorf("invalid en passant square: %s", enPassantSquare)
+		return fmt.Errorf("invalid en passant square %q: %w", enPassantSquare, err)
 	}
 
 	enPassantFile := int8(-1)
