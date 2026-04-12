@@ -491,6 +491,66 @@ func (c *Chess) Moves() []Move {
 	return out
 }
 
+// CapturesInto fills dst with all legal capture moves (regular captures,
+// en passant, and promotion-captures) for the current position. The
+// GivesCheck bit is set on each move. dst is reset before population.
+func (c *Chess) CapturesInto(dst *MoveList) {
+	dst.Reset()
+	for _, uci := range c.moves {
+		m := c.uciToCompactMove(uci)
+		if !m.IsCapture() {
+			continue
+		}
+		if err := c.MakeMoveCompact(m); err == nil {
+			if c.isCheck() {
+				m = m.WithGivesCheck(true)
+			}
+			c.UnmakeMoveCompact()
+		}
+		dst.Add(m)
+	}
+}
+
+// QuietMovesInto fills dst with all legal non-capture moves for the
+// current position. The GivesCheck bit is set on each move. dst is reset
+// before population.
+func (c *Chess) QuietMovesInto(dst *MoveList) {
+	dst.Reset()
+	for _, uci := range c.moves {
+		m := c.uciToCompactMove(uci)
+		if m.IsCapture() {
+			continue
+		}
+		if err := c.MakeMoveCompact(m); err == nil {
+			if c.isCheck() {
+				m = m.WithGivesCheck(true)
+			}
+			c.UnmakeMoveCompact()
+		}
+		dst.Add(m)
+	}
+}
+
+// Captures returns all legal capture moves for the current position with
+// the GivesCheck bit set. It internally uses a temporary MoveList.
+func (c *Chess) Captures() []Move {
+	var ml MoveList
+	c.CapturesInto(&ml)
+	out := make([]Move, ml.Count)
+	copy(out, ml.Moves[:ml.Count])
+	return out
+}
+
+// QuietMoves returns all legal non-capture moves for the current position
+// with the GivesCheck bit set. It internally uses a temporary MoveList.
+func (c *Chess) QuietMoves() []Move {
+	var ml MoveList
+	c.QuietMovesInto(&ml)
+	out := make([]Move, ml.Count)
+	copy(out, ml.Moves[:ml.Count])
+	return out
+}
+
 // PieceAt returns the piece type, color, and ok=true if a piece exists at
 // the given 0-63 square index. Returns zero values and ok=false if the
 // square is empty or out of range.
