@@ -628,21 +628,6 @@ func expectedEPRank(capturingColor gochess.Piece) int {
 	return 5
 }
 
-// destinationMatch looks for a destination in a list of moves.
-// It returns true if any of the moves has the destination.
-// The function expects the moves in UCI format.
-func destinationMatch(moves []string, destination gochess.Coordinate) bool {
-	algCoor := CoordinateToAlgebraic(destination)
-	for _, move := range moves {
-		dest := move[2:4]
-		if dest == algCoor {
-			return true
-		}
-	}
-
-	return false
-}
-
 // legalMoves returns the legal moves for the current turn.
 func (c Chess) legalMoves() []string {
 	moves := c.availableMoves()
@@ -723,11 +708,12 @@ func (c Chess) isLegalMove(move string) bool {
 	kingsColor := c.turn
 
 	c.makeMove(move)
-
-	availableMoves := c.availableMoves()
 	kingPosition := c.kingsPosition(kingsColor)
-
-	kingUnderAttack := destinationMatch(availableMoves, kingPosition)
+	opponent := gochess.Black
+	if kingsColor == gochess.Black {
+		opponent = gochess.White
+	}
+	kingUnderAttack := c.IsAttacked(kingPosition, opponent)
 	c.unmakeMove()
 
 	// If the king is under attack, the move is not legal.
@@ -744,7 +730,7 @@ func (c Chess) isLegalMove(move string) bool {
 			return false
 		}
 		// (2) Cannot castle through check (king passage square under attack).
-		if destinationMatch(availableMoves, castleKingWay[move]) {
+		if c.IsAttacked(castleKingWay[move], opponent) {
 			return false
 		}
 	}

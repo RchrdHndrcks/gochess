@@ -417,17 +417,19 @@ func (c *Chess) toggleColor() {
 
 // isCheck is the helper function that checks if the current turn is in check.
 func (c Chess) isCheck() bool {
+	if c.turn == gochess.Empty {
+		return false
+	}
 	if c.blackKingPosition == nil || c.whiteKingPosition == nil {
 		return false
 	}
 
 	kingPosition := c.kingsPosition(c.turn)
-
-	c.toggleColor()
-	defer c.toggleColor()
-	moves := c.availableMoves()
-
-	return destinationMatch(moves, kingPosition)
+	opponent := gochess.Black
+	if c.turn == gochess.Black {
+		opponent = gochess.White
+	}
+	return c.IsAttacked(kingPosition, opponent)
 }
 
 // kingsPosition returns the position of the king of the given color.
