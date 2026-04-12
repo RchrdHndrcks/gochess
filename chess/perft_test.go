@@ -1,6 +1,7 @@
 package chess
 
 import (
+	"strconv"
 	"testing"
 )
 
@@ -85,19 +86,5 @@ func TestPerftDivideConsistency(t *testing.T) {
 }
 
 func name(tt perftCase) string {
-	return tt.name + "_d" + itoa(tt.depth)
-}
-
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var buf [20]byte
-	pos := len(buf)
-	for i > 0 {
-		pos--
-		buf[pos] = byte('0' + i%10)
-		i /= 10
-	}
-	return string(buf[pos:])
+	return tt.name + "_d" + strconv.Itoa(tt.depth)
 }

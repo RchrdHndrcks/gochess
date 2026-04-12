@@ -95,10 +95,24 @@ func verifyPieceLists(t *testing.T, c *Chess, ply int, uci string) {
 		for _, pt := range types {
 			got := c.PieceSquares(col, pt)
 			want := expected[col|pt]
-			if len(got) != len(want) {
-				t.Fatalf("ply %d (%s): PieceSquares(%v,%v) len=%d, want %d", ply, uci, col, pt, len(got), len(want))
-			}
+			// Build a set from got so a duplicate entry with a missing
+			// entry cannot pass the length check silently.
+			gotSet := map[gochess.Coordinate]struct{}{}
 			for _, sq := range got {
+				if _, dup := gotSet[sq]; dup {
+					t.Fatalf("ply %d (%s): PieceSquares(%v,%v) returned duplicate sq %v", ply, uci, col, pt, sq)
+				}
+				gotSet[sq] = struct{}{}
+			}
+			if len(gotSet) != len(want) {
+				t.Fatalf("ply %d (%s): PieceSquares(%v,%v) len=%d, want %d", ply, uci, col, pt, len(gotSet), len(want))
+			}
+			for sq := range want {
+				if _, ok := gotSet[sq]; !ok {
+					t.Fatalf("ply %d (%s): PieceSquares(%v,%v) missing expected sq %v", ply, uci, col, pt, sq)
+				}
+			}
+			for sq := range gotSet {
 				if _, ok := want[sq]; !ok {
 					t.Fatalf("ply %d (%s): PieceSquares(%v,%v) had unexpected sq %v", ply, uci, col, pt, sq)
 				}
