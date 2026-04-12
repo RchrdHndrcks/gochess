@@ -45,7 +45,49 @@ func TestMaxMoves(t *testing.T) {
 	}
 }
 
-func TestCapturesInto_MatchesCaptures(t *testing.T) {
+// expectedCaptures derives the expected set of captures by filtering the full
+// legal-move list, independently of the staged-gen implementation. Used so
+// the *Into tests do not just compare two wrappers around the same code path.
+func expectedCaptures(c *Chess) []Move {
+	all := c.Moves()
+	out := make([]Move, 0, len(all))
+	for _, m := range all {
+		if m.IsCapture() {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+func expectedQuiets(c *Chess) []Move {
+	all := c.Moves()
+	out := make([]Move, 0, len(all))
+	for _, m := range all {
+		if !m.IsCapture() {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+func sameMoveSet(a, b []Move) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	seen := map[Move]int{}
+	for _, m := range a {
+		seen[m]++
+	}
+	for _, m := range b {
+		seen[m]--
+		if seen[m] < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func TestCapturesInto_MatchesIndependentBaseline(t *testing.T) {
 	c, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -53,20 +95,24 @@ func TestCapturesInto_MatchesCaptures(t *testing.T) {
 	if err := c.LoadPosition(kiwipeteFEN); err != nil {
 		t.Fatalf("LoadPosition: %v", err)
 	}
-	slice := c.Captures()
+	want := expectedCaptures(c)
 	var ml MoveList
 	c.CapturesInto(&ml)
-	if ml.Len() != len(slice) {
-		t.Fatalf("CapturesInto Len=%d, Captures len=%d", ml.Len(), len(slice))
+	got := make([]Move, ml.Len())
+	for i := range got {
+		got[i] = ml.At(i)
 	}
-	for i := range slice {
-		if ml.At(i) != slice[i] {
-			t.Errorf("mismatch at %d: ml=%s slice=%s", i, ml.At(i).UCI(), slice[i].UCI())
+	for _, m := range got {
+		if !m.IsCapture() {
+			t.Errorf("CapturesInto returned non-capture: %s", m.UCI())
 		}
+	}
+	if !sameMoveSet(got, want) {
+		t.Errorf("CapturesInto set mismatch: got %d, want %d", len(got), len(want))
 	}
 }
 
-func TestQuietMovesInto_MatchesQuietMoves(t *testing.T) {
+func TestQuietMovesInto_MatchesIndependentBaseline(t *testing.T) {
 	c, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -74,15 +120,19 @@ func TestQuietMovesInto_MatchesQuietMoves(t *testing.T) {
 	if err := c.LoadPosition(kiwipeteFEN); err != nil {
 		t.Fatalf("LoadPosition: %v", err)
 	}
-	slice := c.QuietMoves()
+	want := expectedQuiets(c)
 	var ml MoveList
 	c.QuietMovesInto(&ml)
-	if ml.Len() != len(slice) {
-		t.Fatalf("QuietMovesInto Len=%d, QuietMoves len=%d", ml.Len(), len(slice))
+	got := make([]Move, ml.Len())
+	for i := range got {
+		got[i] = ml.At(i)
 	}
-	for i := range slice {
-		if ml.At(i) != slice[i] {
-			t.Errorf("mismatch at %d: ml=%s slice=%s", i, ml.At(i).UCI(), slice[i].UCI())
+	for _, m := range got {
+		if m.IsCapture() {
+			t.Errorf("QuietMovesInto returned capture: %s", m.UCI())
 		}
+	}
+	if !sameMoveSet(got, want) {
+		t.Errorf("QuietMovesInto set mismatch: got %d, want %d", len(got), len(want))
 	}
 }

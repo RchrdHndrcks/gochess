@@ -1,6 +1,9 @@
 package chess
 
-// MaxMoves is the maximum number of legal moves in any chess position.
+// MaxMoves is the fixed capacity of MoveList, chosen as a safe upper bound
+// with headroom for move generation. The known maximum number of legal
+// moves in any reachable chess position is below this value; 256 is the
+// container's hard limit, not a tight theoretical bound.
 const MaxMoves = 256
 
 // MoveList is a fixed-array move container that avoids heap allocations
@@ -10,8 +13,16 @@ type MoveList struct {
 	Count int
 }
 
-// Add appends m to the list.
-func (ml *MoveList) Add(m Move) { ml.Moves[ml.Count] = m; ml.Count++ }
+// Add appends m to the list. It panics if the list is already at MaxMoves
+// capacity (or if Count has been externally corrupted) so an overflow does
+// not silently corrupt adjacent memory or skip moves.
+func (ml *MoveList) Add(m Move) {
+	if ml.Count < 0 || ml.Count >= MaxMoves {
+		panic("chess: MoveList.Add overflow or invalid Count")
+	}
+	ml.Moves[ml.Count] = m
+	ml.Count++
+}
 
 // At returns the move at index i.
 func (ml *MoveList) At(i int) Move { return ml.Moves[i] }
