@@ -64,6 +64,13 @@ func (c *Chess) makeMove(move string) {
 func (c *Chess) applyMove(md moveData) {
 	o, t := md.from, md.to
 
+	// Capture the moving piece's type before mutating the board so that
+	// the incremental piece-list updates below can reference it.
+	movingPiece, _ := c.board.Square(o)
+	movingType := gochess.PieceType(movingPiece)
+	moverColor := c.turn
+	oppColor := opponentColor(moverColor)
+
 	if md.isCastle {
 		// Move the rook for the castle.
 		c.makeMoveOnBoard(castleRook[md.uci], gochess.Coor((o.X+t.X)/2, o.Y))
@@ -79,6 +86,30 @@ func (c *Chess) applyMove(md moveData) {
 		_ = c.board.SetSquare(o, gochess.Empty)
 	} else {
 		c.makeMoveOnBoard(o, t)
+	}
+
+	// Incremental piece-list updates. These mirror the board mutations
+	// above and avoid the cost of rescanning the board on every move.
+	switch {
+	case md.isCastle:
+		c.pieceLists[colorIndex(moverColor)][gochess.King].move(o, t)
+		rookFrom := castleRook[md.uci]
+		rookTo := gochess.Coor((o.X+t.X)/2, o.Y)
+		c.pieceLists[colorIndex(moverColor)][gochess.Rook].move(rookFrom, rookTo)
+	case md.isEnPassant:
+		c.pieceLists[colorIndex(moverColor)][gochess.Pawn].move(o, t)
+		c.pieceLists[colorIndex(oppColor)][gochess.Pawn].remove(gochess.Coor(t.X, o.Y))
+	case md.promotionType != gochess.Empty:
+		c.pieceLists[colorIndex(moverColor)][gochess.Pawn].remove(o)
+		if md.capturedPiece != gochess.Empty {
+			c.pieceLists[colorIndex(oppColor)][gochess.PieceType(md.capturedPiece)].remove(t)
+		}
+		c.pieceLists[colorIndex(moverColor)][md.promotionType].add(t)
+	default:
+		if md.capturedPiece != gochess.Empty {
+			c.pieceLists[colorIndex(oppColor)][gochess.PieceType(md.capturedPiece)].remove(t)
+		}
+		c.pieceLists[colorIndex(moverColor)][movingType].move(o, t)
 	}
 
 	c.history = append(
@@ -200,6 +231,40 @@ func (c *Chess) unmakeMove() {
 		// the EP capture. After toggleColor, c.turn IS the side that made
 		// the capture, so the captured pawn color is the opposite.
 		_ = c.board.SetSquare(gochess.Coor(o.X, t.Y), gochess.Pawn|opponentColor(c.turn))
+	}
+
+	// Incremental piece-list updates: reverse the operations performed by
+	// applyMove. c.turn is now the side that made the move (post toggle).
+	moverColor := c.turn
+	oppColor := opponentColor(moverColor)
+	isEP := isEnPassantMoveByContext(move, lastContext)
+	isCastle := c.isCastleMove(move)
+	switch {
+	case isCastle:
+		rookFrom := castleRook[move]
+		rookTo := gochess.Coor((o.X+t.X)/2, o.Y)
+		c.pieceLists[colorIndex(moverColor)][gochess.Rook].move(rookTo, rookFrom)
+		c.pieceLists[colorIndex(moverColor)][gochess.King].move(o, t)
+	case isEP:
+		c.pieceLists[colorIndex(oppColor)][gochess.Pawn].add(gochess.Coor(o.X, t.Y))
+		c.pieceLists[colorIndex(moverColor)][gochess.Pawn].move(o, t)
+	case len(move) == 5:
+		// Promotion (with or without capture).
+		promoType := gochess.PiecesWithoutColor[move[4:5]]
+		c.pieceLists[colorIndex(moverColor)][promoType].remove(o)
+		if lastContext.capturedPiece != gochess.Empty {
+			c.pieceLists[colorIndex(oppColor)][gochess.PieceType(lastContext.capturedPiece)].add(o)
+		}
+		c.pieceLists[colorIndex(moverColor)][gochess.Pawn].add(t)
+	default:
+		// Regular move (possibly capture). Determine moving type from board:
+		// after the board restore, the piece is back on its origin square (t).
+		movedPiece, _ := c.board.Square(t)
+		movedType := gochess.PieceType(movedPiece)
+		c.pieceLists[colorIndex(moverColor)][movedType].move(o, t)
+		if lastContext.capturedPiece != gochess.Empty {
+			c.pieceLists[colorIndex(oppColor)][gochess.PieceType(lastContext.capturedPiece)].add(o)
+		}
 	}
 
 	c.actualFEN = c.calculateFEN()
