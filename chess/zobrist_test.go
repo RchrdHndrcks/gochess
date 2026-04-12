@@ -60,17 +60,28 @@ func TestZobristRestoredAfterUnmake(t *testing.T) {
 // Hash() must equal a fresh full recomputation. If this ever fails, the
 // XOR delta sequence in applyMove is wrong.
 func TestZobristIncrementalMatchesScratch(t *testing.T) {
+	// Sequence covers a quiet pawn double-push, knight/bishop development,
+	// castling, an exchange capture (Bxc6 / bxc6), and finishing development.
+	// The capture is essential: an earlier version of the test never
+	// exercised the "remove captured piece" XOR delta in applyMove.
 	moves := []string{
 		"e2e4", "e7e5",
 		"g1f3", "b8c6",
 		"f1b5", "a7a6",
-		"b5a4", "g8f6",
+		"b5c6", "d7c6", // Bxc6 then bxc6 — captures by both sides
 		"e1g1", "f8e7", // castling
 	}
 	c, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
+	startHash := c.Hash()
+	startPawn := c.PawnHash()
+	hashes := make([]uint64, 0, len(moves))
+	pawnHashes := make([]uint64, 0, len(moves))
+	hashes = append(hashes, startHash)
+	pawnHashes = append(pawnHashes, startPawn)
+
 	for i, m := range moves {
 		if err := c.MakeMove(m); err != nil {
 			t.Fatalf("move %d (%s): %v", i, m, err)
@@ -83,6 +94,57 @@ func TestZobristIncrementalMatchesScratch(t *testing.T) {
 		if c.PawnHash() != wantPawn {
 			t.Fatalf("move %d (%s): incremental PawnHash %d != scratch %d", i, m, c.PawnHash(), wantPawn)
 		}
+		hashes = append(hashes, c.Hash())
+		pawnHashes = append(pawnHashes, c.PawnHash())
+	}
+
+	// Unmake all moves and assert hashes match the snapshot from before
+	// each move. This catches asymmetric XOR deltas in unmakeMove that the
+	// forward-only assertions above would miss.
+	for i := len(moves) - 1; i >= 0; i-- {
+		c.UnmakeMove()
+		if c.Hash() != hashes[i] {
+			t.Fatalf("after unmake of move %d (%s): Hash %d != %d", i, moves[i], c.Hash(), hashes[i])
+		}
+		if c.PawnHash() != pawnHashes[i] {
+			t.Fatalf("after unmake of move %d (%s): PawnHash %d != %d", i, moves[i], c.PawnHash(), pawnHashes[i])
+		}
+	}
+	if c.Hash() != startHash {
+		t.Fatalf("after full unmake: Hash %d != start %d", c.Hash(), startHash)
+	}
+}
+
+// TestZobristIncrementalMatchesScratchPromotionWithCapture exercises the
+// combined capture+promotion XOR delta. Regression for the case where
+// applyMove forgot to subtract either the captured piece's contribution
+// or the moving pawn's contribution before adding the promoted piece.
+func TestZobristIncrementalMatchesScratchPromotionWithCapture(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	// Black knight on b8, white pawn on a7 ready to capture+promote on b8.
+	if err := c.LoadPosition("1n6/P7/8/8/8/8/8/k6K w - - 0 1"); err != nil {
+		t.Fatalf("LoadPosition: %v", err)
+	}
+	startHash := c.Hash()
+	startPawn := c.PawnHash()
+	if err := c.MakeMove("a7b8q"); err != nil {
+		t.Fatalf("promotion-with-capture: %v", err)
+	}
+	if c.Hash() != computeHashFromScratch(c) {
+		t.Fatalf("after a7xb8=Q: incremental Hash != scratch")
+	}
+	if c.PawnHash() != computePawnHashFromScratch(c) {
+		t.Fatalf("after a7xb8=Q: incremental PawnHash != scratch")
+	}
+	c.UnmakeMove()
+	if c.Hash() != startHash {
+		t.Fatalf("after unmake of a7xb8=Q: Hash %d != start %d", c.Hash(), startHash)
+	}
+	if c.PawnHash() != startPawn {
+		t.Fatalf("after unmake of a7xb8=Q: PawnHash %d != start %d", c.PawnHash(), startPawn)
 	}
 }
 
