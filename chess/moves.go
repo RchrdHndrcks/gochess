@@ -71,6 +71,14 @@ func (c *Chess) applyMove(md moveData) {
 	moverColor := c.turn
 	oppColor := opponentColor(moverColor)
 
+	// Snapshot the state needed to compute hash deltas. These reflect the
+	// pre-move castling rights and en passant file; the corresponding
+	// post-move values are XOR'd in after the state has been updated.
+	oldHash := c.hash
+	oldPawnHash := c.pawnHash
+	oldCastles := c.availableCastles
+	oldEPFile := c.enPassantFile
+
 	if md.isCastle {
 		// Move the rook for the castle.
 		c.makeMoveOnBoard(castleRook[md.uci], gochess.Coor((o.X+t.X)/2, o.Y))
@@ -127,6 +135,8 @@ func (c *Chess) applyMove(md moveData) {
 			check:             c.check,
 			checkmate:         c.checkmate,
 			stalemate:         c.stalemate,
+			hash:              oldHash,
+			pawnHash:          oldPawnHash,
 		},
 	)
 
@@ -144,6 +154,73 @@ func (c *Chess) applyMove(md moveData) {
 	c.updateCastlePossibilities()
 	c.updateHalfMoves()
 	c.updateEnPassantSquare()
+
+	// Incremental Zobrist hash update. We work from the pre-move snapshot
+	// of hash/castling/ep-file and the moveData. The board has already been
+	// mutated, but the hash deltas are computed only from squares and types,
+	// so the order does not matter for correctness.
+	ci := colorIndex(moverColor)
+	oppCI := colorIndex(oppColor)
+	fromSq := squareFromCoordinate(o)
+	toSq := squareFromCoordinate(t)
+
+	// Remove the moving piece from its origin and place it on the target.
+	c.hash ^= zobrist.pieces[ci][movingType][fromSq]
+	c.hash ^= zobrist.pieces[ci][movingType][toSq]
+	if movingType == gochess.Pawn {
+		c.pawnHash ^= zobrist.pieces[ci][gochess.Pawn][fromSq]
+		c.pawnHash ^= zobrist.pieces[ci][gochess.Pawn][toSq]
+	}
+
+	// Remove the captured piece, if any. For en passant the captured pawn
+	// sits behind the destination square (same file as destination, same
+	// rank as origin).
+	if md.capturedPiece != gochess.Empty {
+		capType := gochess.PieceType(md.capturedPiece)
+		capSq := toSq
+		if md.isEnPassant {
+			capSq = squareFromCoordinate(gochess.Coor(t.X, o.Y))
+		}
+		c.hash ^= zobrist.pieces[oppCI][capType][capSq]
+		if capType == gochess.Pawn {
+			c.pawnHash ^= zobrist.pieces[oppCI][gochess.Pawn][capSq]
+		}
+	}
+
+	// Promotion: undo the pawn placement on the target and place the
+	// promoted piece instead.
+	if md.promotionType != gochess.Empty {
+		c.hash ^= zobrist.pieces[ci][movingType][toSq]
+		c.hash ^= zobrist.pieces[ci][md.promotionType][toSq]
+		// movingType is always Pawn for promotions; remove the pawn from
+		// the target square in the pawn hash too.
+		c.pawnHash ^= zobrist.pieces[ci][gochess.Pawn][toSq]
+	}
+
+	// Castling: also XOR the rook from/to squares.
+	if md.isCastle {
+		rookFrom := squareFromCoordinate(castleRook[md.uci])
+		rookTo := squareFromCoordinate(gochess.Coor((o.X+t.X)/2, o.Y))
+		c.hash ^= zobrist.pieces[ci][gochess.Rook][rookFrom]
+		c.hash ^= zobrist.pieces[ci][gochess.Rook][rookTo]
+	}
+
+	// Castling-rights delta.
+	if oldCastles != c.availableCastles {
+		c.hash ^= zobrist.castling[uint8(oldCastles)]
+		c.hash ^= zobrist.castling[uint8(c.availableCastles)]
+	}
+
+	// En passant file delta.
+	if oldEPFile >= 0 {
+		c.hash ^= zobrist.enPassant[oldEPFile]
+	}
+	if c.enPassantFile >= 0 {
+		c.hash ^= zobrist.enPassant[c.enPassantFile]
+	}
+
+	// Side-to-move flips on every move.
+	c.hash ^= zobrist.sideToMove
 }
 
 // opponentColor returns the opposing color piece bit.
@@ -180,6 +257,8 @@ func (c *Chess) unmakeMove() {
 	c.halfMoves = lastContext.halfMove
 	c.availableCastles = lastContext.availableCastles
 	c.enPassantFile = lastContext.enPassantFile
+	c.hash = lastContext.hash
+	c.pawnHash = lastContext.pawnHash
 	c.whiteKingPosition = lastContext.whiteKingPosition
 	c.blackKingPosition = lastContext.blackKingPosition
 	c.check = lastContext.check

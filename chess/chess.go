@@ -65,6 +65,12 @@ type (
 		checkmate bool
 		// stalemate is true if the current turn is in stalemate.
 		stalemate bool
+		// hash is the Zobrist hash of the position before this move was made.
+		// Saved here so unmakeMove can restore it directly without computing
+		// reverse XOR deltas.
+		hash uint64
+		// pawnHash is the pawn-only Zobrist hash before this move was made.
+		pawnHash uint64
 	}
 
 	// Chess represents a Chess game.
@@ -108,6 +114,15 @@ type (
 		// pieceLists tracks piece locations per color and type.
 		// First index: 0=White, 1=Black. Second index: piece type (1–6).
 		pieceLists [2][7]pieceList
+
+		// hash is the incrementally-maintained Zobrist hash of the current
+		// position. Initialized in New() / LoadPosition() from
+		// computeHashFromScratch and updated by applyMove / unmakeMove.
+		hash uint64
+		// pawnHash is the incrementally-maintained pawn-only Zobrist hash.
+		// It changes only on pawn moves, pawn captures, en passant captures,
+		// and promotions.
+		pawnHash uint64
 	}
 )
 
@@ -179,6 +194,8 @@ func New(opts ...Option) (*Chess, error) {
 	}
 
 	c.initPieceLists()
+	c.hash = computeHashFromScratch(c)
+	c.pawnHash = computePawnHashFromScratch(c)
 
 	return c, nil
 }
@@ -196,6 +213,8 @@ func (c *Chess) LoadPosition(FEN string) error {
 
 	c.actualFEN = FEN
 	c.initPieceLists()
+	c.hash = computeHashFromScratch(c)
+	c.pawnHash = computePawnHashFromScratch(c)
 	c.moves = c.legalMoves()
 	check := c.isCheck()
 	c.check = check && len(c.moves) > 0
@@ -550,6 +569,88 @@ func (c *Chess) QuietMoves() []Move {
 	copy(out, ml.Moves[:ml.Count])
 	return out
 }
+
+// Hash returns the Zobrist hash of the current position. The hash is
+// updated incrementally after each make/unmake, so this call is O(1).
+func (c *Chess) Hash() uint64 { return c.hash }
+
+// PawnHash returns the Zobrist hash of the pawn structure of the current
+// position. It is updated incrementally and is left unchanged by moves
+// that do not involve a pawn (no pawn moves, captures, en passant or
+// promotions).
+func (c *Chess) PawnHash() uint64 { return c.pawnHash }
+
+// LastMove returns the most recent move made on this game in compact form.
+// If no move has been made yet, NullMove is returned.
+//
+// The returned Move is the one stored in history at the time of make. It
+// has from/to/flags/promotion/captured set when the move was made via
+// MakeMoveCompact. Moves made through the legacy MakeMove(string) entry
+// point are reconstructed from the UCI string with full flag/captured
+// information so the returned Move is always meaningful.
+func (c *Chess) LastMove() Move {
+	if len(c.history) == 0 {
+		return NullMove
+	}
+	last := c.history[len(c.history)-1]
+	if last.compactMove != NullMove {
+		return last.compactMove
+	}
+	if last.move == "" {
+		return NullMove
+	}
+	return uciToCompactFromContext(last)
+}
+
+// uciToCompactFromContext reconstructs a compact Move from the UCI string
+// stored in a chessContext. It uses only information present in the
+// context (capturedPiece, enPassantFile prior to make) so it works for
+// history entries created by makeMove(string).
+func uciToCompactFromContext(ctx chessContext) Move {
+	from, _ := AlgebraicToCoordinate(ctx.move[:2])
+	to, _ := AlgebraicToCoordinate(ctx.move[2:4])
+
+	var promo gochess.Piece
+	if len(ctx.move) == 5 {
+		promo = gochess.PiecesWithoutColor[ctx.move[4:5]]
+	}
+
+	captured := gochess.PieceType(ctx.capturedPiece)
+	isEP := isEnPassantMoveByContext(ctx.move, ctx)
+	// A move is a castle if it appears in the canonical castle map and the
+	// king moved two files horizontally.
+	isCastle := false
+	if _, ok := castlesMoves[ctx.move]; ok {
+		isCastle = (to.X-from.X == 2 || from.X-to.X == 2)
+	}
+
+	flag := FlagQuiet
+	switch {
+	case isCastle:
+		flag = FlagCastle
+	case isEP:
+		flag = FlagEnPassant
+	case promo != gochess.Empty && captured != gochess.Empty:
+		flag = FlagPromotionCapture
+	case promo != gochess.Empty:
+		flag = FlagPromotion
+	case captured != gochess.Empty:
+		flag = FlagCapture
+	}
+
+	m := NewMove(from, to, flag)
+	if promo != gochess.Empty {
+		m = m.WithPromotion(promo)
+	}
+	if captured != gochess.Empty {
+		m = m.WithCapturedPiece(captured)
+	}
+	return m
+}
+
+// HalfmoveClock returns the number of half-moves since the last capture or
+// pawn move. Used for the fifty-move draw rule.
+func (c *Chess) HalfmoveClock() int { return c.halfMoves }
 
 // PieceAt returns the piece type, color, and ok=true if a piece exists at
 // the given 0-63 square index. Returns zero values and ok=false if the
