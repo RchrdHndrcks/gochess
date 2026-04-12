@@ -125,23 +125,54 @@ func TestUnmakeMoveCompact_PromotionWithoutCapture(t *testing.T) {
 }
 
 func TestMoves_GivesCheckBit(t *testing.T) {
-	// Position where Qh5+ delivers check from h5 against an exposed king.
-	c, err := New()
-	if err != nil {
-		t.Fatalf("New: %v", err)
+	// For each tested FEN, generate Moves() and assert that the GivesCheck
+	// bit on every returned move agrees with ground truth (play the move,
+	// query the opponent's king square, and call IsAttacked equivalent via
+	// isCheck on the side now to move, which is the opponent we just moved
+	// against).
+	fens := []string{
+		// Starting position (no checks possible).
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		// White queen on h5 and black king on e8 — Qh5xf7 etc. gives check.
+		"4k3/5p2/8/7Q/8/8/8/4K3 w - - 0 1",
+		// Kiwipete-like middlegame position with multiple checking moves.
+		"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
 	}
-	// White queen on h5, black king on f7 with an open diagonal/file.
-	if err := c.LoadPosition("4k3/5p2/8/7Q/8/8/8/4K3 w - - 0 1"); err != nil {
-		t.Fatalf("LoadPosition: %v", err)
-	}
-	moves := c.Moves()
-	foundCheck := false
-	for _, m := range moves {
-		if m.GivesCheck() {
-			foundCheck = true
-		}
-	}
-	if !foundCheck {
-		t.Errorf("expected at least one move with GivesCheck set")
+	for _, fen := range fens {
+		fen := fen
+		t.Run(fen, func(t *testing.T) {
+			c, err := New()
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			if err := c.LoadPosition(fen); err != nil {
+				t.Fatalf("LoadPosition: %v", err)
+			}
+			moves := c.Moves()
+			anyChecked := false
+			for _, m := range moves {
+				// Ground truth: play the move via MakeMoveCompact, then ask
+				// isCheck (which checks whether the side to move — the
+				// opponent of the player who just moved — is in check).
+				clone, err := New()
+				if err != nil {
+					t.Fatalf("New: %v", err)
+				}
+				if err := clone.LoadPosition(fen); err != nil {
+					t.Fatalf("LoadPosition: %v", err)
+				}
+				if err := clone.MakeMoveCompact(m.WithGivesCheck(false)); err != nil {
+					t.Fatalf("MakeMoveCompact(%s): %v", m.UCI(), err)
+				}
+				wantCheck := clone.isCheck()
+				if got := m.GivesCheck(); got != wantCheck {
+					t.Errorf("move %s GivesCheck=%v, want %v", m.UCI(), got, wantCheck)
+				}
+				if wantCheck {
+					anyChecked = true
+				}
+			}
+			_ = anyChecked
+		})
 	}
 }

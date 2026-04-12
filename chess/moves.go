@@ -29,6 +29,7 @@ type moveData struct {
 	isCastle      bool
 	isEnPassant   bool
 	uci           string // UCI string stored in history for unmakeMove
+	compact       Move   // compact move; NullMove when entry point is the UCI string path
 }
 
 // makeMove makes a move without checking if it is legal.
@@ -85,7 +86,7 @@ func (c *Chess) applyMove(md moveData) {
 		c.history,
 		chessContext{
 			move:              md.uci,
-			compactMove:       NullMove,
+			compactMove:       md.compact,
 			capturedPiece:     md.capturedPiece,
 			positionKey:       positionKey(c.actualFEN),
 			halfMove:          c.halfMoves,

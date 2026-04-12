@@ -425,6 +425,7 @@ func (c *Chess) MakeMoveCompact(m Move) error {
 		isEnPassant:   c.isEnPassantMove(uci),
 		promotionType: m.Promotion(),
 		uci:           uci,
+		compact:       m,
 	}
 
 	if md.isEnPassant {
@@ -465,20 +466,35 @@ func (c *Chess) ParseUCIMove(uci string) (Move, error) {
 }
 
 // Moves returns all legal moves for the current position as compact Move
-// values. The GivesCheck bit is computed for each move by playing it,
-// checking whether the opponent is in check, and unmaking it.
+// values. The GivesCheck bit is computed for each move by playing it on the
+// internal board, calling isCheck, and unmaking it. The lightweight
+// applyMove/unmakeMove path is used (no FEN recompute, no legal-move-list
+// refresh) so this stays O(n) over the legal moves.
 func (c *Chess) Moves() []Move {
 	uciMoves := c.moves
 	out := make([]Move, 0, len(uciMoves))
 	for _, uci := range uciMoves {
 		m := c.uciToCompactMove(uci)
-		// Detect gives-check by playing/unmaking the move.
-		if err := c.MakeMoveCompact(m); err == nil {
-			if c.isCheck() {
-				m = m.WithGivesCheck(true)
-			}
-			c.UnmakeMoveCompact()
+		md := moveData{
+			from:          m.From(),
+			to:            m.To(),
+			isCastle:      c.isCastleMove(uci),
+			isEnPassant:   c.isEnPassantMove(uci),
+			promotionType: m.Promotion(),
+			uci:           uci,
+			compact:       m,
 		}
+		if md.isEnPassant {
+			md.capturedPiece = gochess.Pawn | opponentColor(c.turn)
+		} else {
+			dst, _ := c.board.Square(md.to)
+			md.capturedPiece = dst
+		}
+		c.applyMove(md)
+		if c.isCheck() {
+			m = m.WithGivesCheck(true)
+		}
+		c.unmakeMove()
 		out = append(out, m)
 	}
 	return out
