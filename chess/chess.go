@@ -104,6 +104,10 @@ type (
 
 		// history is the history of the game.
 		history []chessContext
+
+		// pieceLists tracks piece locations per color and type.
+		// First index: 0=White, 1=Black. Second index: piece type (1–6).
+		pieceLists [2][7]pieceList
 	}
 )
 
@@ -174,6 +178,8 @@ func New(opts ...Option) (*Chess, error) {
 		}
 	}
 
+	c.initPieceLists()
+
 	return c, nil
 }
 
@@ -189,6 +195,7 @@ func (c *Chess) LoadPosition(FEN string) error {
 	}
 
 	c.actualFEN = FEN
+	c.initPieceLists()
 	c.moves = c.legalMoves()
 	check := c.isCheck()
 	c.check = check && len(c.moves) > 0
