@@ -145,3 +145,74 @@ func TestMoves_GivesCheckBit(t *testing.T) {
 		t.Errorf("expected at least one move with GivesCheck set")
 	}
 }
+
+var stagedTestFENs = []string{
+	"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+	kiwipeteFEN,
+	"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+	"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+	// In-check position: black king attacked.
+	"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1",
+}
+
+func TestStagedGen_CapturesPlusQuietsEqualsMoves(t *testing.T) {
+	for _, fen := range stagedTestFENs {
+		c, err := New()
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+		if err := c.LoadPosition(fen); err != nil {
+			t.Fatalf("LoadPosition(%q): %v", fen, err)
+		}
+		all := c.Moves()
+		caps := c.Captures()
+		quiets := c.QuietMoves()
+		if len(caps)+len(quiets) != len(all) {
+			t.Errorf("FEN=%s: captures(%d)+quiets(%d) != moves(%d)",
+				fen, len(caps), len(quiets), len(all))
+		}
+		seen := map[Move]int{}
+		for _, m := range all {
+			seen[m]++
+		}
+		for _, m := range caps {
+			if !m.IsCapture() {
+				t.Errorf("FEN=%s: Captures returned non-capture %s", fen, m.UCI())
+			}
+			if seen[m] == 0 {
+				t.Errorf("FEN=%s: capture %s not in Moves()", fen, m.UCI())
+			}
+		}
+		for _, m := range quiets {
+			if m.IsCapture() {
+				t.Errorf("FEN=%s: QuietMoves returned capture %s", fen, m.UCI())
+			}
+			if seen[m] == 0 {
+				t.Errorf("FEN=%s: quiet %s not in Moves()", fen, m.UCI())
+			}
+		}
+	}
+}
+
+func TestStagedGen_GivesCheckBitAccurate(t *testing.T) {
+	for _, fen := range stagedTestFENs {
+		c, err := New()
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+		if err := c.LoadPosition(fen); err != nil {
+			t.Fatalf("LoadPosition(%q): %v", fen, err)
+		}
+		for _, m := range c.Moves() {
+			if err := c.MakeMoveCompact(m); err != nil {
+				t.Fatalf("MakeMoveCompact(%s): %v", m.UCI(), err)
+			}
+			actual := c.IsCheck()
+			c.UnmakeMoveCompact()
+			if m.GivesCheck() != actual {
+				t.Errorf("FEN=%s move=%s GivesCheck=%v actual=%v",
+					fen, m.UCI(), m.GivesCheck(), actual)
+			}
+		}
+	}
+}
