@@ -709,10 +709,7 @@ func (c Chess) isLegalMove(move string) bool {
 
 	c.makeMove(move)
 	kingPosition := c.kingsPosition(kingsColor)
-	opponent := gochess.Black
-	if kingsColor == gochess.Black {
-		opponent = gochess.White
-	}
+	opponent := opponentColor(kingsColor)
 	kingUnderAttack := c.IsAttacked(kingPosition, opponent)
 	c.unmakeMove()
 
