@@ -41,9 +41,10 @@ type (
 		// halfMove is the number of half moves since the last capture or pawn move.
 		halfMove int
 		// availableCastles is the castles that are available.
-		availableCastles string
-		// enPassantSquare is the square where a pawn can capture in passant.
-		enPassantSquare string
+		availableCastles CastleRights
+		// enPassantFile is the file (0-7 = a-h) where en passant capture is
+		// available, or -1 if none.
+		enPassantFile int8
 		// whiteKingPosition is the position of the white king.
 		whiteKingPosition *gochess.Coordinate
 		// blackKingPosition is the position of the black king.
@@ -68,11 +69,11 @@ type (
 		movesCount uint64
 		// halfMoves is the number of half moves since the last capture or pawn move.
 		halfMoves int
-		// enPassantSquare is the square where a pawn can capture in passant.
-		enPassantSquare string
+		// enPassantFile is the file (0-7 = a-h) where en passant capture is
+		// available, or -1 if none.
+		enPassantFile int8
 		// availableCastles is the castles that are available.
-		// It will has the same format as the FEN castles.
-		availableCastles string
+		availableCastles CastleRights
 		// moves are the available moves in the current position.
 		moves []string
 		// actualFEN is the FEN string of the current position.
@@ -136,8 +137,8 @@ func New(opts ...Option) (*Chess, error) {
 		turn:             gochess.White,
 		movesCount:       1,
 		halfMoves:        0,
-		enPassantSquare:  "",
-		availableCastles: "KQkq",
+		enPassantFile:    -1,
+		availableCastles: AllCastling,
 		actualFEN:        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 		moves: []string{
 			"a2a3", "a2a4", "b2b3", "b2b4", "c2c3", "c2c4", "d2d3", "d2d4",

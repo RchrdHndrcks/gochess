@@ -1270,3 +1270,22 @@ func TestAvailableMoves_Consistency(t *testing.T) {
 		}
 	}
 }
+
+func TestEnPassantFENRoundTrip(t *testing.T) {
+	fens := []string{
+		"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		"rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
+	}
+	for _, fen := range fens {
+		t.Run(fen, func(t *testing.T) {
+			g, err := chess.New(chess.WithFEN(fen))
+			if err != nil {
+				t.Fatalf("New(WithFEN(%q)): %v", fen, err)
+			}
+			if got := g.FEN(); got != fen {
+				t.Errorf("FEN round-trip failed:\n  input:  %s\n  output: %s", fen, got)
+			}
+		})
+	}
+}

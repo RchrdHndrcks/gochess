@@ -1,7 +1,6 @@
 package chess
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"regexp"
@@ -125,8 +124,18 @@ func (c *Chess) calculateFEN(move ...string) string {
 		return ""
 	}
 
-	ac := cmp.Or(c.availableCastles, "-")
-	ips := cmp.Or(c.enPassantSquare, "-")
+	ac := c.availableCastles.String()
+	ips := "-"
+	if c.enPassantFile >= 0 {
+		// EP rank: rank 6 (index 2) when black to move, rank 3 (index 5) when white to move.
+		// After a white double push, side to move is black -> EP square is on rank 3 (y=5).
+		// After a black double push, side to move is white -> EP square is on rank 6 (y=2).
+		epY := 5
+		if c.turn == gochess.White {
+			epY = 2
+		}
+		ips = CoordinateToAlgebraic(gochess.Coor(int(c.enPassantFile), epY))
+	}
 
 	var boardFEN string
 	if len(move) == 0 {
@@ -207,14 +216,20 @@ func (c *Chess) setProperties(FEN string) error {
 		return fmt.Errorf("invalid color: %s", props[0])
 	}
 
-	availableCastles := props[1]
-	if err := c.validateCastles(availableCastles); err != nil {
-		return fmt.Errorf("invalid castles: %s", availableCastles)
+	castleRights, err := parseCastleRights(props[1])
+	if err != nil {
+		return fmt.Errorf("invalid castles: %s", props[1])
 	}
 
 	enPassantSquare := props[2]
 	if err := c.validateEnPassant(enPassantSquare); err != nil {
 		return fmt.Errorf("invalid en passant square: %s", enPassantSquare)
+	}
+
+	enPassantFile := int8(-1)
+	if enPassantSquare != "-" {
+		coor, _ := AlgebraicToCoordinate(enPassantSquare)
+		enPassantFile = int8(coor.X)
 	}
 
 	halfMoves, err := strconv.Atoi(props[3])
@@ -228,8 +243,8 @@ func (c *Chess) setProperties(FEN string) error {
 	}
 
 	c.turn = color
-	c.availableCastles = availableCastles
-	c.enPassantSquare = props[2]
+	c.availableCastles = castleRights
+	c.enPassantFile = enPassantFile
 	c.halfMoves = halfMoves
 	c.movesCount = movesCount
 	return nil
@@ -244,26 +259,24 @@ func (c *Chess) updateMovesCount() {
 
 // updateCastlePossibilities checks if the castles are still available.
 func (c *Chess) updateCastlePossibilities() {
-	toBeRemoved := map[string]bool{}
-
 	k, _ := c.board.Square(gochess.Coor(4, 0))
 	rr, _ := c.board.Square(gochess.Coor(7, 0))
 	lr, _ := c.board.Square(gochess.Coor(0, 0))
-	toBeRemoved["k"] = rr != gochess.Rook|gochess.Black || k != gochess.King|gochess.Black
-	toBeRemoved["q"] = lr != gochess.Rook|gochess.Black || k != gochess.King|gochess.Black
+	if rr != gochess.Rook|gochess.Black || k != gochess.King|gochess.Black {
+		c.availableCastles &^= BlackKingside
+	}
+	if lr != gochess.Rook|gochess.Black || k != gochess.King|gochess.Black {
+		c.availableCastles &^= BlackQueenside
+	}
 
 	K, _ := c.board.Square(gochess.Coor(4, 7))
 	rR, _ := c.board.Square(gochess.Coor(7, 7))
 	lR, _ := c.board.Square(gochess.Coor(0, 7))
-	toBeRemoved["K"] = rR != gochess.Rook|gochess.White || K != gochess.King|gochess.White
-	toBeRemoved["Q"] = lR != gochess.Rook|gochess.White || K != gochess.King|gochess.White
-
-	for castle, mustDelete := range toBeRemoved {
-		if !mustDelete {
-			continue
-		}
-
-		c.availableCastles = strings.ReplaceAll(c.availableCastles, castle, "")
+	if rR != gochess.Rook|gochess.White || K != gochess.King|gochess.White {
+		c.availableCastles &^= WhiteKingside
+	}
+	if lR != gochess.Rook|gochess.White || K != gochess.King|gochess.White {
+		c.availableCastles &^= WhiteQueenside
 	}
 }
 
@@ -314,7 +327,7 @@ func (c *Chess) updateHalfMoves() {
 // It must be called after a move is made. If no move was made,
 // the function will panic.
 func (c *Chess) updateEnPassantSquare() {
-	c.enPassantSquare = ""
+	c.enPassantFile = -1
 
 	lastMove := c.history[len(c.history)-1].move
 	if len(lastMove) != 4 {
@@ -331,7 +344,7 @@ func (c *Chess) updateEnPassantSquare() {
 	destRow, _ := strconv.Atoi(lastMove[3:4])
 	orgRow, _ := strconv.Atoi(lastMove[1:2])
 	if destRow == orgRow+2 || destRow == orgRow-2 {
-		c.enPassantSquare = fmt.Sprintf("%s%d", lastMove[2:3], (destRow+orgRow)/2)
+		c.enPassantFile = int8(dest.X)
 		return
 	}
 }
@@ -365,22 +378,32 @@ func (c Chess) validateEnPassant(square string) error {
 	return nil
 }
 
-// validateCastles validates the castles string.
-func (Chess) validateCastles(castles string) error {
+// parseCastleRights parses the FEN castles field into a CastleRights bitmask.
+func parseCastleRights(castles string) (CastleRights, error) {
 	if castles == "-" {
-		return nil
+		return NoCastling, nil
 	}
 
-	castlePieces := map[rune]bool{'K': true, 'Q': true, 'k': true, 'q': true}
-	for _, castle := range castles {
-		if !castlePieces[castle] {
-			return errors.New("invalid castles")
+	bits := map[rune]CastleRights{
+		'K': WhiteKingside,
+		'Q': WhiteQueenside,
+		'k': BlackKingside,
+		'q': BlackQueenside,
+	}
+
+	var cr CastleRights
+	for _, ch := range castles {
+		bit, ok := bits[ch]
+		if !ok {
+			return NoCastling, errors.New("invalid castles")
 		}
-
-		delete(castlePieces, castle)
+		if cr.Has(bit) {
+			return NoCastling, errors.New("duplicate castle character")
+		}
+		cr |= bit
 	}
 
-	return nil
+	return cr, nil
 }
 
 // isPositionLegal verifies if the current turn can capture the opponent king.

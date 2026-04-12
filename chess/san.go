@@ -55,7 +55,7 @@ func (c *Chess) SAN(uciMove string) (string, error) {
 	isCapture := targetPiece != gochess.Empty
 
 	// En passant is also a capture.
-	if pieceType == gochess.Pawn && c.enPassantSquare != "" && uciMove[2:4] == c.enPassantSquare {
+	if pieceType == gochess.Pawn && c.isEnPassantMove(uciMove) {
 		isCapture = true
 	}
 
