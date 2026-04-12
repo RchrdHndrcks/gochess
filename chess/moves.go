@@ -1,7 +1,6 @@
 package chess
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/RchrdHndrcks/gochess/v2"
@@ -63,7 +62,7 @@ func (c *Chess) makeMove(move string) {
 			fen:               lastFEN,
 			halfMove:          c.halfMoves,
 			availableCastles:  c.availableCastles,
-			enPassantSquare:   c.enPassantSquare,
+			enPassantFile:     c.enPassantFile,
 			whiteKingPosition: c.whiteKingPosition,
 			blackKingPosition: c.blackKingPosition,
 			check:             c.check,
@@ -113,7 +112,7 @@ func (c *Chess) unmakeMove() {
 
 	c.halfMoves = lastContext.halfMove
 	c.availableCastles = lastContext.availableCastles
-	c.enPassantSquare = lastContext.enPassantSquare
+	c.enPassantFile = lastContext.enPassantFile
 	c.whiteKingPosition = lastContext.whiteKingPosition
 	c.blackKingPosition = lastContext.blackKingPosition
 	c.actualFEN = lastContext.fen
@@ -216,6 +215,13 @@ func (c Chess) pawnMoves(origin gochess.Coordinate) []string {
 		return append(c.pawnCaptureMoves(origin, false), moves...)
 	}
 
+	// Double push is only allowed when the single-push square is empty, i.e.
+	// the previous step appended a move. Otherwise the pawn cannot leap over
+	// an occupied intermediate square.
+	if len(moves) == 0 {
+		return c.pawnCaptureMoves(origin, false)
+	}
+
 	tCor = gochess.Coor(origin.X, origin.Y+2*dir)
 	s, _ = c.board.Square(tCor)
 	if s == gochess.Empty {
@@ -242,7 +248,7 @@ func (c Chess) pawnCaptureMoves(origin gochess.Coordinate, isPromotion bool) []s
 			continue
 		}
 
-		if CoordinateToAlgebraic(tCor) == c.enPassantSquare {
+		if c.enPassantFile >= 0 && int8(tCor.X) == c.enPassantFile && tCor.Y == expectedEPRank(pColor) {
 			moves = append(moves, UCI(origin, tCor))
 			continue
 		}
@@ -299,43 +305,55 @@ func (c Chess) kingMoves(origin gochess.Coordinate) []string {
 
 // kingCastleMoves returns valid castle moves.
 func (c Chess) kingCastleMoves(origin gochess.Coordinate) []string {
-	if c.availableCastles == "-" {
+	if c.availableCastles == NoCastling {
 		return nil
 	}
 
 	p, _ := c.board.Square(origin)
 	kingColor := gochess.PieceColor(p)
 
-	castleDirections := map[string]int{
-		"k": 1, "K": 1,
-		"q": -1, "Q": -1,
+	type castleOption struct {
+		right CastleRights
+		color gochess.Piece
+		dir   int
+	}
+
+	options := []castleOption{
+		{WhiteKingside, gochess.White, 1},
+		{WhiteQueenside, gochess.White, -1},
+		{BlackKingside, gochess.Black, 1},
+		{BlackQueenside, gochess.Black, -1},
 	}
 
 	moves := make([]string, 0, 2)
-	for castle, dir := range castleDirections {
-		if !strings.Contains(c.availableCastles, castle) {
+	for _, opt := range options {
+		if !c.availableCastles.Has(opt.right) {
+			continue
+		}
+		if opt.color != kingColor {
 			continue
 		}
 
-		if gochess.Pieces[castle]&kingColor == gochess.Empty {
-			continue
-		}
-
-		ts, err := c.board.Square(gochess.Coor(origin.X+dir, origin.Y))
+		ts, err := c.board.Square(gochess.Coor(origin.X+opt.dir, origin.Y))
 		if err != nil || ts != gochess.Empty {
 			continue
 		}
 
-		ts, err = c.board.Square(gochess.Coor(origin.X+2*dir, origin.Y))
+		ts, err = c.board.Square(gochess.Coor(origin.X+2*opt.dir, origin.Y))
 		if err != nil || ts != gochess.Empty {
 			continue
 		}
 
-		moves = append(moves, UCI(origin, gochess.Coor(origin.X+2*dir, origin.Y)))
-
-		if len(moves) == 2 {
-			break
+		// For queenside castling, the b-file square (3 squares from king) must
+		// also be empty even though the king does not pass through it.
+		if opt.dir == -1 {
+			ts, err = c.board.Square(gochess.Coor(origin.X+3*opt.dir, origin.Y))
+			if err != nil || ts != gochess.Empty {
+				continue
+			}
 		}
+
+		moves = append(moves, UCI(origin, gochess.Coor(origin.X+2*opt.dir, origin.Y)))
 	}
 
 	return moves
@@ -433,18 +451,34 @@ func (c Chess) isCastleMove(move string) bool {
 //
 // The passed move must be valid.
 func (c Chess) isEnPassantMove(move string) bool {
-	if c.enPassantSquare == "" {
+	if c.enPassantFile < 0 {
 		return false
 	}
 
 	origin, _ := AlgebraicToCoordinate(move[:2])
+	target, _ := AlgebraicToCoordinate(move[2:4])
 
-	if move[2:4] != c.enPassantSquare {
+	p, _ := c.board.Square(origin)
+	if gochess.PieceType(p) != gochess.Pawn {
 		return false
 	}
 
-	p, _ := c.board.Square(origin)
-	return gochess.PieceType(p) == gochess.Pawn
+	if int8(target.X) != c.enPassantFile {
+		return false
+	}
+
+	return target.Y == expectedEPRank(gochess.PieceColor(p))
+}
+
+// expectedEPRank returns the y-coordinate of the en passant target square for
+// a pawn of the given color performing the capture.
+//
+// White pawns capture en passant onto rank 6 (y=2); black pawns onto rank 3 (y=5).
+func expectedEPRank(capturingColor gochess.Piece) int {
+	if capturingColor == gochess.White {
+		return 2
+	}
+	return 5
 }
 
 // destinationMatch looks for a destination in a list of moves.

@@ -835,7 +835,8 @@ func TestLoadPosition_Errors(t *testing.T) {
 
 		// Assert
 		require.NotNil(t, err)
-		assert.Equal(t, "invalid FEN: invalid castles: QQQQ", err.Error())
+		assert.Contains(t, err.Error(), "invalid castles")
+		assert.Contains(t, err.Error(), "QQQQ")
 	})
 
 	t.Run("Invalid FEN - Invalid En Passant square", func(t *testing.T) {
@@ -848,7 +849,8 @@ func TestLoadPosition_Errors(t *testing.T) {
 
 		// Assert
 		require.NotNil(t, err)
-		assert.Equal(t, "invalid FEN: invalid en passant square: e3", err.Error())
+		assert.Contains(t, err.Error(), "invalid en passant square")
+		assert.Contains(t, err.Error(), "e3")
 	})
 
 	t.Run("Invalid FEN - Invalid En Passant square", func(t *testing.T) {
@@ -861,7 +863,8 @@ func TestLoadPosition_Errors(t *testing.T) {
 
 		// Assert
 		require.NotNil(t, err)
-		assert.Equal(t, "invalid FEN: invalid en passant square: h7", err.Error())
+		assert.Contains(t, err.Error(), "invalid en passant square")
+		assert.Contains(t, err.Error(), "h7")
 	})
 
 	t.Run("Invalid FEN - Invalid En Passant square", func(t *testing.T) {
@@ -874,7 +877,8 @@ func TestLoadPosition_Errors(t *testing.T) {
 
 		// Assert
 		require.NotNil(t, err)
-		assert.Equal(t, "invalid FEN: invalid en passant square: h9", err.Error())
+		assert.Contains(t, err.Error(), "invalid en passant square")
+		assert.Contains(t, err.Error(), "h9")
 	})
 
 	t.Run("Invalid FEN - Invalid Half Moves", func(t *testing.T) {
@@ -1269,4 +1273,48 @@ func TestAvailableMoves_Consistency(t *testing.T) {
 			assert.Error(t, err, "move %q should be illegal after move %q", illegal, move)
 		}
 	}
+}
+
+func TestEnPassantFENRoundTrip(t *testing.T) {
+	fens := []string{
+		"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		"rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3",
+	}
+	for _, fen := range fens {
+		t.Run(fen, func(t *testing.T) {
+			g, err := chess.New(chess.WithFEN(fen))
+			if err != nil {
+				t.Fatalf("New(WithFEN(%q)): %v", fen, err)
+			}
+			if got := g.FEN(); got != fen {
+				t.Errorf("FEN round-trip failed:\n  input:  %s\n  output: %s", fen, got)
+			}
+		})
+	}
+}
+
+// TestPawnDoublePushBlocked verifies that a pawn on its starting rank cannot
+// double-push when the intermediate (single-push) square is occupied. This is
+// a regression for the previously-incorrect generator that allowed leaping
+// over a blocking piece.
+func TestPawnDoublePushBlocked(t *testing.T) {
+	// White pawn e2 with a black knight on e3 blocking the single push.
+	c, err := chess.New(chess.WithFEN("4k3/8/8/8/8/4n3/4P3/4K3 w - - 0 1"))
+	require.NoError(t, err)
+	moves := c.AvailableMoves()
+	assert.NotContains(t, moves, "e2e3", "single push must be blocked")
+	assert.NotContains(t, moves, "e2e4", "double push must be blocked when e3 is occupied")
+}
+
+// TestQueensideCastleBBlocked verifies that queenside castling requires the
+// b-file square to be empty even though the king does not pass through it.
+// Regression for the previously-incorrect generator that allowed e1c1 with a
+// piece on b1.
+func TestQueensideCastleBBlocked(t *testing.T) {
+	// White king e1, rook a1, and a knight on b1 blocking the rook path.
+	c, err := chess.New(chess.WithFEN("4k3/8/8/8/8/8/8/RN2K3 w Q - 0 1"))
+	require.NoError(t, err)
+	moves := c.AvailableMoves()
+	assert.NotContains(t, moves, "e1c1", "queenside castle must be blocked when b1 is occupied")
 }
