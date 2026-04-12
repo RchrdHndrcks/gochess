@@ -1289,3 +1289,36 @@ func TestEnPassantFENRoundTrip(t *testing.T) {
 		})
 	}
 }
+
+func TestChessContextRefactorRegression(t *testing.T) {
+	// Play a 9-move Ruy Lopez opening, then unmake all moves and verify
+	// that the start position FEN is restored. This exercises the
+	// chessContext refactor (no fen field, capturedPiece + positionKey)
+	// and ensures unmakeMove correctly recomputes FEN via calculateFEN.
+	c, err := chess.New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	startFEN := c.FEN()
+
+	moves := []string{
+		"e2e4", "e7e5",
+		"g1f3", "b8c6",
+		"f1b5", "a7a6",
+		"b5a4", "g8f6",
+		"e1g1", // White castles kingside.
+	}
+	for _, m := range moves {
+		if err := c.MakeMove(m); err != nil {
+			t.Fatalf("MakeMove(%s): %v", m, err)
+		}
+	}
+
+	for range moves {
+		c.UnmakeMove()
+	}
+
+	if got := c.FEN(); got != startFEN {
+		t.Errorf("FEN after unmaking all moves:\n  got:  %s\n  want: %s", got, startFEN)
+	}
+}

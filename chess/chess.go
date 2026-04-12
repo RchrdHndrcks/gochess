@@ -34,10 +34,20 @@ type (
 
 	// chessContext represents the history of a game.
 	chessContext struct {
-		// move is a played move.
+		// move is the played move in UCI notation. Kept for unmakeMove which
+		// parses the string to recover origin/target/promotion data.
 		move string
-		// fen is a FEN strings that represents the position.
-		fen string
+		// compactMove is the same move in packed form. Set when MakeMoveCompact
+		// is the entry point (NullMove for the legacy makeMove(uci) path, since
+		// the engine uses move for unmake either way).
+		compactMove Move
+		// capturedPiece is the piece captured by this move (Empty if none).
+		// For en passant, this is the captured pawn (with color).
+		capturedPiece gochess.Piece
+		// positionKey is the first three FEN fields (placement / active color /
+		// castling rights) of the position before the move was made. Used for
+		// threefold-repetition detection without re-parsing FEN strings.
+		positionKey string
 		// halfMove is the number of half moves since the last capture or pawn move.
 		halfMove int
 		// availableCastles is the castles that are available.
@@ -345,7 +355,7 @@ func (c *Chess) IsThreefoldRepetition() bool {
 	currentKey := positionKey(c.actualFEN)
 	count := 1 // current position counts as one occurrence
 	for _, ctx := range c.history {
-		if positionKey(ctx.fen) == currentKey {
+		if ctx.positionKey == currentKey {
 			count++
 			if count >= 3 {
 				return true
@@ -386,6 +396,167 @@ func (c *Chess) Square(square string) (string, error) {
 	}
 
 	return gochess.PieceNames[p], nil
+}
+
+// MakeMoveCompact applies the given compact Move to the board.
+//
+// The move is validated against the legal move list (by UCI string) and
+// rejected with an error if it is not legal in the current position. On
+// success, the FEN, legal-move list and check/checkmate/stalemate flags
+// are recomputed.
+//
+// Unlike MakeMove(string), the board mutation does not parse strings:
+// the from/to/flags/promotion are read directly from the Move bits and
+// passed to applyMove. The only string allocated is m.UCI(), which is
+// stored in history because unmakeMove parses it.
+func (c *Chess) MakeMoveCompact(m Move) error {
+	uci := m.UCI()
+	if !slices.Contains(c.moves, uci) {
+		return fmt.Errorf("move is not legal: %s", uci)
+	}
+
+	from := m.From()
+	to := m.To()
+
+	md := moveData{
+		from:          from,
+		to:            to,
+		isCastle:      c.isCastleMove(uci),
+		isEnPassant:   c.isEnPassantMove(uci),
+		promotionType: m.Promotion(),
+		uci:           uci,
+	}
+
+	if md.isEnPassant {
+		md.capturedPiece = gochess.Pawn | opponentColor(c.turn)
+	} else {
+		dst, _ := c.board.Square(to)
+		md.capturedPiece = dst
+	}
+
+	c.applyMove(md)
+	c.actualFEN = c.calculateFEN(uci)
+	c.moves = c.legalMoves()
+	check := c.isCheck()
+	c.check = check && len(c.moves) > 0
+	c.checkmate = check && len(c.moves) == 0
+	c.stalemate = !check && len(c.moves) == 0
+	return nil
+}
+
+// UnmakeMoveCompact unmakes the last move and recomputes the legal-move list.
+func (c *Chess) UnmakeMoveCompact() {
+	c.unmakeMove()
+	c.moves = c.legalMoves()
+}
+
+// ParseUCIMove validates the given UCI string against the current legal
+// move list and, if legal, returns its compact Move representation. The
+// returned Move has from/to/flags/promotion/captured filled in but does
+// not set the GivesCheck bit.
+func (c *Chess) ParseUCIMove(uci string) (Move, error) {
+	if len(uci) != 4 && len(uci) != 5 {
+		return NullMove, fmt.Errorf("invalid UCI move: %q", uci)
+	}
+	if !slices.Contains(c.moves, uci) {
+		return NullMove, fmt.Errorf("move is not legal: %s", uci)
+	}
+	return c.uciToCompactMove(uci), nil
+}
+
+// Moves returns all legal moves for the current position as compact Move
+// values. The GivesCheck bit is computed for each move by playing it,
+// checking whether the opponent is in check, and unmaking it.
+func (c *Chess) Moves() []Move {
+	uciMoves := c.moves
+	out := make([]Move, 0, len(uciMoves))
+	for _, uci := range uciMoves {
+		m := c.uciToCompactMove(uci)
+		// Detect gives-check by playing/unmaking the move.
+		if err := c.MakeMoveCompact(m); err == nil {
+			if c.isCheck() {
+				m = m.WithGivesCheck(true)
+			}
+			c.UnmakeMoveCompact()
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// PieceAt returns the piece type, color, and ok=true if a piece exists at
+// the given 0-63 square index. Returns zero values and ok=false if the
+// square is empty or out of range.
+func (c *Chess) PieceAt(sq int) (pieceType, color gochess.Piece, ok bool) {
+	if sq < 0 || sq >= 64 {
+		return 0, 0, false
+	}
+	coor := coordinateFromSquare(uint32(sq))
+	p, err := c.board.Square(coor)
+	if err != nil || p == gochess.Empty {
+		return 0, 0, false
+	}
+	return gochess.PieceType(p), gochess.PieceColor(p), true
+}
+
+// uciToCompactMove inspects current board state to determine flags,
+// captured piece, and promotion for the given UCI string.
+func (c *Chess) uciToCompactMove(uci string) Move {
+	from, _ := AlgebraicToCoordinate(uci[:2])
+	to, _ := AlgebraicToCoordinate(uci[2:4])
+
+	isCastle := c.isCastleMove(uci)
+	isEP := c.isEnPassantMove(uci)
+
+	var captured gochess.Piece
+	if isEP {
+		captured = gochess.Pawn
+	} else {
+		dst, _ := c.board.Square(to)
+		captured = gochess.PieceType(dst)
+	}
+
+	var promo gochess.Piece
+	if len(uci) == 5 {
+		promo = gochess.PiecesWithoutColor[uci[4:5]]
+	}
+
+	// Detect double pawn push.
+	isDoublePush := false
+	if !isCastle && !isEP && promo == gochess.Empty {
+		fp, _ := c.board.Square(from)
+		if gochess.PieceType(fp) == gochess.Pawn {
+			dy := to.Y - from.Y
+			if dy == 2 || dy == -2 {
+				isDoublePush = true
+			}
+		}
+	}
+
+	flag := FlagQuiet
+	switch {
+	case isCastle:
+		flag = FlagCastle
+	case isEP:
+		flag = FlagEnPassant
+	case promo != gochess.Empty && captured != gochess.Empty:
+		flag = FlagPromotionCapture
+	case promo != gochess.Empty:
+		flag = FlagPromotion
+	case captured != gochess.Empty:
+		flag = FlagCapture
+	case isDoublePush:
+		flag = FlagDoublePush
+	}
+
+	m := NewMove(from, to, flag)
+	if promo != gochess.Empty {
+		m = m.WithPromotion(promo)
+	}
+	if captured != gochess.Empty {
+		m = m.WithCapturedPiece(captured)
+	}
+	return m
 }
 
 // clone creates a deep copy of the Chess structure.

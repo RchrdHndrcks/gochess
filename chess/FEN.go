@@ -3,14 +3,11 @@ package chess
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/RchrdHndrcks/gochess/v2"
 )
-
-var fenAnalysisRegex = regexp.MustCompile("[/0-9]")
 
 // loadPosition is a helper function that loads a board from a FEN string.
 //
@@ -299,25 +296,18 @@ func (c *Chess) updateHalfMoves() {
 		return
 	}
 
-	// Look for a change in the board.
-	// If we have less pieces than before, a capture was made so we reset the counter.
-	lastFENPiecePart := strings.Split(h.fen, " ")[0]
-
-	lastFENPiecePart = fenAnalysisRegex.ReplaceAllString(lastFENPiecePart, "")
-	fenPiecePart := fenAnalysisRegex.ReplaceAllString(c.calculateBoardFEN(), "")
-
-	if len(lastFENPiecePart) > len(fenPiecePart) {
+	// If a capture was made, reset.
+	if h.capturedPiece != gochess.Empty {
 		c.halfMoves = 0
 		return
 	}
 
-	// If no capture was made, we check if last move was a pawn move.
+	// If no capture was made, check whether the last move was a pawn move.
 	target := h.move[2:4]
 	coor, _ := AlgebraicToCoordinate(target)
 	p, _ := c.board.Square(coor)
 
-	piece := gochess.PieceType(p)
-	if piece == gochess.Pawn {
+	if gochess.PieceType(p) == gochess.Pawn {
 		c.halfMoves = 0
 	}
 }

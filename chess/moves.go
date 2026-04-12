@@ -18,48 +18,76 @@ var capacityByPiece = map[gochess.Piece]int{
 	gochess.Black | gochess.Bishop: 13,
 }
 
+// moveData holds pre-parsed move information for the internal applyMove
+// method. Both makeMove (UCI string entry point) and MakeMoveCompact build
+// this struct so that the actual board mutation is string-free.
+type moveData struct {
+	from          gochess.Coordinate
+	to            gochess.Coordinate
+	capturedPiece gochess.Piece // piece captured (with color); Empty if none
+	promotionType gochess.Piece // promotion piece type without color; Empty if none
+	isCastle      bool
+	isEnPassant   bool
+	uci           string // UCI string stored in history for unmakeMove
+}
+
 // makeMove makes a move without checking if it is legal.
 func (c *Chess) makeMove(move string) {
-	lastFEN := c.actualFEN
-
-	// Ignore the error because the move should be already validated.
 	o, _ := AlgebraicToCoordinate(move[:2])
 	t, _ := AlgebraicToCoordinate(move[2:4])
 
-	if c.isCastleMove(move) {
-		// If the move is a castle move, we need to move the rook too.
-		//
-		// Ignore the error because the coordinates is valid because
-		// the move is already validated.
-		c.makeMoveOnBoard(castleRook[move], gochess.Coor((o.X+t.X)/2, o.Y))
+	md := moveData{
+		from:        o,
+		to:          t,
+		isCastle:    c.isCastleMove(move),
+		isEnPassant: c.isEnPassantMove(move),
+		uci:         move,
 	}
 
-	if c.isEnPassantMove(move) {
-		// If the move is an en passant capture, we need to remove the captured pawn.
-		// The captured pawn is behind the target square.
-		//
-		// Ignore the error because the coordinates is valid because
-		// the move is already validated.
+	if md.isEnPassant {
+		md.capturedPiece = gochess.Pawn | opponentColor(c.turn)
+	} else {
+		dst, _ := c.board.Square(t)
+		md.capturedPiece = dst
+	}
+
+	if len(move) == 5 {
+		md.promotionType = gochess.PiecesWithoutColor[move[4:5]]
+	}
+
+	c.applyMove(md)
+}
+
+// applyMove mutates the board for a pre-parsed move, updates the history,
+// king positions, side-to-move and derived counters. It is shared between
+// makeMove (string entry point) and MakeMoveCompact.
+func (c *Chess) applyMove(md moveData) {
+	o, t := md.from, md.to
+
+	if md.isCastle {
+		// Move the rook for the castle.
+		c.makeMoveOnBoard(castleRook[md.uci], gochess.Coor((o.X+t.X)/2, o.Y))
+	}
+
+	if md.isEnPassant {
+		// Remove the captured pawn, which lives behind the target square.
 		_ = c.board.SetSquare(gochess.Coor(t.X, o.Y), gochess.Empty)
 	}
 
-	// UCI moves only permit 5 characters if the move is a pawn coronation.
-	if len(move) == 5 {
-		// Ignore the error because the coordinates is valid because
-		// the move is already validated.
-		_ = c.board.SetSquare(t, gochess.PiecesWithoutColor[move[4:5]]|c.turn)
+	if md.promotionType != gochess.Empty {
+		_ = c.board.SetSquare(t, md.promotionType|c.turn)
 		_ = c.board.SetSquare(o, gochess.Empty)
 	} else {
-		// Ignore the error because the coordinates is valid because
-		// the move is already validated.
 		c.makeMoveOnBoard(o, t)
 	}
 
 	c.history = append(
 		c.history,
 		chessContext{
-			move:              move,
-			fen:               lastFEN,
+			move:              md.uci,
+			compactMove:       NullMove,
+			capturedPiece:     md.capturedPiece,
+			positionKey:       positionKey(c.actualFEN),
 			halfMove:          c.halfMoves,
 			availableCastles:  c.availableCastles,
 			enPassantFile:     c.enPassantFile,
@@ -85,6 +113,14 @@ func (c *Chess) makeMove(move string) {
 	c.updateCastlePossibilities()
 	c.updateHalfMoves()
 	c.updateEnPassantSquare()
+}
+
+// opponentColor returns the opposing color piece bit.
+func opponentColor(color gochess.Piece) gochess.Piece {
+	if color == gochess.White {
+		return gochess.Black
+	}
+	return gochess.White
 }
 
 // makeMoveOnBoard is a helper function to make a move on the board.
@@ -115,7 +151,6 @@ func (c *Chess) unmakeMove() {
 	c.enPassantFile = lastContext.enPassantFile
 	c.whiteKingPosition = lastContext.whiteKingPosition
 	c.blackKingPosition = lastContext.blackKingPosition
-	c.actualFEN = lastContext.fen
 	c.check = lastContext.check
 	c.checkmate = lastContext.checkmate
 	c.stalemate = lastContext.stalemate
@@ -127,31 +162,78 @@ func (c *Chess) unmakeMove() {
 	}
 
 	move := lastContext.move
+	// Note: o = original target, t = original origin (variables are swapped
+	// here so that "moving back" reads naturally as o -> t).
 	o, _ := AlgebraicToCoordinate(move[2:4])
 	t, _ := AlgebraicToCoordinate(move[:2])
 
-	// If it was a promotion, restore the captured piece.
 	if len(move) == 5 {
+		// Promotion: restore the pawn on the origin square.
 		_ = c.board.SetSquare(t, gochess.Pawn|c.turn)
+		// Restore whatever lived on the target square: a captured piece for
+		// a promotion-capture, or Empty for a quiet promotion. Without
+		// clearing here, a quiet promotion would leave the promoted piece
+		// on the destination square.
+		if lastContext.capturedPiece != gochess.Empty {
+			_ = c.board.SetSquare(o, lastContext.capturedPiece)
+		} else {
+			_ = c.board.SetSquare(o, gochess.Empty)
+		}
 	} else {
-		// Move the piece back to its original position
+		// Move the piece back to its original square.
 		c.makeMoveOnBoard(o, t)
-	}
-
-	// Check if there was a capture by examining the previous FEN.
-	capturedPiece := pieceFromFEN(lastContext.fen, o)
-	if capturedPiece != gochess.Empty {
-		_ = c.board.SetSquare(o, capturedPiece)
+		// Restore the captured piece on the destination, if any. For en
+		// passant the captured pawn lives on a different square (handled
+		// below), so leave the diagonal destination empty in that case.
+		isEP := isEnPassantMoveByContext(move, lastContext)
+		if lastContext.capturedPiece != gochess.Empty && !isEP {
+			_ = c.board.SetSquare(o, lastContext.capturedPiece)
+		}
 	}
 
 	if c.isCastleMove(move) {
 		c.makeMoveOnBoard(gochess.Coor((o.X+t.X)/2, o.Y), castleRook[move])
 	}
 
-	if c.isEnPassantMove(move) {
-		// Restore the captured pawn.
-		_ = c.board.SetSquare(gochess.Coor(o.X, t.Y), gochess.Pawn|c.turn)
+	if isEnPassantMoveByContext(move, lastContext) {
+		// The captured pawn belongs to the opponent of the side that made
+		// the EP capture. After toggleColor, c.turn IS the side that made
+		// the capture, so the captured pawn color is the opposite.
+		_ = c.board.SetSquare(gochess.Coor(o.X, t.Y), gochess.Pawn|opponentColor(c.turn))
 	}
+
+	c.actualFEN = c.calculateFEN()
+}
+
+// isEnPassantMoveByContext reports whether the just-undone move was an
+// en passant capture. We can't use Chess.isEnPassantMove because the en
+// passant file has already been restored to the pre-move state and the
+// destination square no longer holds the moving pawn (we just moved it
+// back). Instead, we look at the captured piece slot in the history: an
+// EP capture is the only pawn-target move where the captured pawn lives
+// on a different square than the move's destination.
+func isEnPassantMoveByContext(move string, ctx chessContext) bool {
+	if len(move) != 4 {
+		return false
+	}
+	if gochess.PieceType(ctx.capturedPiece) != gochess.Pawn {
+		return false
+	}
+	// The destination file differs from the origin file (diagonal pawn move)
+	// AND the captured piece slot is set, but the target square in the
+	// pre-move position was empty. The cheapest detector: the move is a
+	// pawn diagonal whose target square's pre-move occupant was empty.
+	// We approximate this via the EP file stored in the restored context:
+	// if the destination square equals the EP target, this is EP.
+	if ctx.enPassantFile < 0 {
+		return false
+	}
+	dest, _ := AlgebraicToCoordinate(move[2:4])
+	if int8(dest.X) != ctx.enPassantFile {
+		return false
+	}
+	// EP target rank: y=2 if white captured (target rank 6), y=5 if black.
+	return dest.Y == 2 || dest.Y == 5
 }
 
 // movesForPiece returns the available moves for a piece.
