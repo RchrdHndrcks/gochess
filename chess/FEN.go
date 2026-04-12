@@ -422,12 +422,7 @@ func (c Chess) isCheck() bool {
 	}
 
 	kingPosition := c.kingsPosition(c.turn)
-
-	c.toggleColor()
-	defer c.toggleColor()
-	moves := c.availableMoves()
-
-	return destinationMatch(moves, kingPosition)
+	return c.IsAttacked(kingPosition, opponentColor(c.turn))
 }
 
 // kingsPosition returns the position of the king of the given color.
